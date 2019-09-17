@@ -29,13 +29,17 @@ function sendData(data) {
 
 // Open errors will be emitted as an error event
 port.on('error', function(err) {
-  console.log('Open Error: ', err.message) // ??? Will this ever happen since I left AutoOpen to default???
+  console.log('General rrror: ', err.message) // ??? Will this ever happen since I left AutoOpen to default???
 })
 
 // Switches the port into "flowing mode"
 port.on('data', function (data) {
-  console.log('Data received:', data)
+  console.log('Data received:',data.toString())//.match(/<Buffer(.*)>/g)[1])
 })
 
-//sendData("test");
+
 console.log("Ready!");
+sendData("test");
+
+// HEX to decimal and ASCII
+//https://www.rapidtables.com/convert/number/ascii-to-hex.html
