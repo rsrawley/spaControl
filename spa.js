@@ -1,12 +1,14 @@
 // Set up GPIO access
 let gpio = require('onoff').Gpio;
-let re_de = new gpio(4,'high'); // Physical pin 7
-let Vcc = new gpio(17,'high'); // Physical pin 11
+let Vcc = new gpio(18,'high'); // Physical pin 12
+let RE = new gpio(23,'high'); // Physical pin 16
+let DE = new gpio(24,'high'); // Physical pin 18
 
 // Release all GPIOs on exit
 process.on('SIGINT', function () {
-	re_de.unexport();
 	Vcc.unexport();
+	RE.unexport();
+	DE.unexport();
 	process.exit()
 })
 
@@ -29,17 +31,17 @@ function sendData(data) {
 
 // Open errors will be emitted as an error event
 port.on('error', function(err) {
-  console.log('General rrror: ', err.message) // ??? Will this ever happen since I left AutoOpen to default???
+  console.log('General error: ', err.message) // ??? Will this ever happen since I left AutoOpen to default???
 })
 
 // Switches the port into "flowing mode"
 port.on('data', function (data) {
-  console.log('Data received:',data.toString())//.match(/<Buffer(.*)>/g)[1])
+  console.log('Data received:',data.toString())
 })
 
 
 console.log("Ready!");
-sendData("test");
+//sendData("test");
 
 // HEX to decimal and ASCII
 //https://www.rapidtables.com/convert/number/ascii-to-hex.html
