@@ -1,8 +1,8 @@
 // Set up GPIO access
 let gpio = require('onoff').Gpio;
-let Vcc = new gpio(18,'high'); // Physical pin 12
-let RE = new gpio(23,'high'); // Physical pin 16
-let DE = new gpio(24,'high'); // Physical pin 18
+//let Vcc = new gpio(18,'high'); // Physical pin 12
+let RE = new gpio(23,'low'); // Physical pin 16
+let DE = new gpio(24,'low'); // Physical pin 18
 
 // Release all GPIOs on exit
 process.on('SIGINT', function () {
@@ -16,7 +16,7 @@ process.on('SIGINT', function () {
 // Set up serial port
 const SerialPort = require('serialport')
 const port = new SerialPort('/dev/ttyAMA0', {
-  baudRate: 19200
+  baudRate: 115200
 })
 
 function sendData(data) {
@@ -36,7 +36,7 @@ port.on('error', function(err) {
 
 // Switches the port into "flowing mode"
 port.on('data', function (data) {
-  console.log('Data received:',data.toString())
+  console.log(data); // data.toString() to get ASCII character
 })
 
 
