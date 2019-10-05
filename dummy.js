@@ -43,9 +43,6 @@ let translate = {
 }
 
 // Set up serial port
-
-let temp=0;
-
 const SerialPort = require('serialport');
 const Delimiter = require('@serialport/parser-delimiter');
 const port = new SerialPort('/dev/ttyAMA0', {
@@ -86,20 +83,12 @@ parser.on('data', function(data) {
 	}
 
 
+	console.log("Data: " + message.hex)
 
 // For testing only:
-	console.log("Data: " + message.hex)
 let ignore = ["10bf06","10bf07","febf00","ffaf13"]
 if (message.type in ignore) {
 //	console.log("Data: " + message.hex)
-}
-if (message.type == "10bf06" && temp==0) {
-		sendData('7e0610bf2061c97e')
-				sendData('7e0610bf2061c97e')
-
-		temp++
-
-
 }
 
 })
@@ -115,21 +104,15 @@ setTimeout(function() {
 function sendData(data) {
 	console.log("Sending: " + data);
 	let message=data;
-
-
-	message="";
-	for (let i=0; i<data.length/2; i++) {
+/*	for (let i=0; i<data.length/2; i++) {
 		message=message + String.fromCharCode(parseInt(data.substr(i*2,2),16))
-		//console.log(String.fromCharCode(parseInt(data.substr(i*2,2),16)),i)
+		console.log(data.substr(i*2,2))
 	}
 	console.log(message)
-
+*/
 	port.write(message, function(err) {
 	  if (err) {
 	    return console.log('Error on write: ', err.message)
-	  }else{
-
-	  	console.log("message sent!")
 	  }
 	})
 }
