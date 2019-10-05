@@ -14,6 +14,31 @@ process.on('SIGINT', function () {
 
 
 // Set up serial port
+const SerialPort = require('serialport');
+const Delimiter = require('@serialport/parser-delimiter');
+const port = new SerialPort('/dev/ttyAMA0', {
+  baudRate: 115200
+});
+const parser = port.pipe(new Delimiter({ delimiter: Buffer.from('7e', 'hex') }));
+parser.on('data', function(data) {
+	let translation="";
+
+	let message = data.hexSlice();
+
+	for (key in data) {
+		translation+=key+"\n"
+	}
+	console.log(translation);
+
+
+console.log(data.join(","),data[0].toString(16).padStart(2, '0'),data[1].toString(16),data[2])
+
+
+	lkjdsaflkj
+})
+
+
+/*
 const SerialPort = require('serialport')
 const port = new SerialPort('/dev/ttyAMA0', {
   baudRate: 115200
@@ -36,7 +61,7 @@ port.on('error', function(err) {
 
 // Switches the port into "flowing mode"
 port.on('data', function (data) {
-  console.log(data); // data.toString() to get ASCII character
+  console.log(data); // data.toString() to get ASCII character OR data.hexSlice() to get straight hexadecimal
 })
 
 
@@ -45,3 +70,4 @@ console.log("Ready!");
 
 // HEX to decimal and ASCII
 //https://www.rapidtables.com/convert/number/ascii-to-hex.html
+*/
