@@ -94,10 +94,9 @@ if (message.type in ignore) {
 //	console.log("Data: " + message.hex)
 }
 if (message.type == "10bf06" && temp==0) {
-	sendData('0abf2061')
 	// web site for CRC checksum : http://www.sunshine2k.de/coding/javascript/crc/crc_js.html
 	//	sendData('0610bf2061c9') //06 10 bf 20 61 c9
-    	//sendData('0610bf2061') //06 10 bf 20 61 c9
+  sendData('10bf2060') //06 10 bf 20 61 c9
 
 		temp++
 
@@ -107,42 +106,57 @@ if (message.type == "10bf06" && temp==0) {
 
 
 function sendData(data) {
+
+// when sending data: prepare the message first, then wait for opportunity to send it (wait for 10bf06 message)
+// need to double check how reliable messsage sending is
+// when switching back to listening, might get a message length error at first since we might be coming back in
+//    in the middle of a message
+
+
 	console.log("Sending: " + data); // For testing only
 	
 	// Compute length of final message (+1 for length byte and +1 for checksum byte)
 	let length = data.length/2 + 2;
-	data = length.toString(16) + data;
+	data = length.toString(16).padStart(2,"0") + data;
 
 	// Computer CRC checksum
 	let crc = checksum(data);
-	data = data + crc.toString(16);
+	data = data + crc.toString(16).padStart(2,"0");
 
 	// Append message start and end bytes
 	data = "7e" + data + "7e"; 
-
+console.log("hexstring: " +data) // for testing only
 	// Change HEX string to ASCII characters	
-	let message="";
+	let asciiString="";
 	for (let i=0; i<data.length/2; i++) {
-		message = message + String.fromCharCode(parseInt(data.substr(i*2,2),16))
+		asciiString = asciiString + String.fromCharCode(parseInt(data.substr(i*2,2),16))
 	}
-	console.log(message) // For testing only
+	//console.log(message) // For testing only
 
-	// Switch RS485 module to transmit
-	DE.write(1, function() {
-		RE.write(1, function() {
-			port.write(message, function(err) {
-			  if (err) {
-			    return console.log('Error on write: ', err.message)
-			  }
-
-			  // Switch RS485 module back to receive
-			  DE.write(0)
-			  RE.write(0)
-			})
-		})
-	})
+	transmit(asciiString)() // Returns a function that needs to be executed right away
 }
 
+
+
+function transmit(asciiString) {
+	return 	function() {
+		DE.write(1, function() { // Switch RS485 module to transmit
+			RE.write(1, function() {
+
+				port.write(asciiString, 'ascii', function(err) {
+					console.log("port.write sending:"+asciiString)
+				  if (err) {
+				    return console.log('Error on write: ', err.message)
+				  }
+
+				  // Switch RS485 module back to receive
+				  DE.write(0)
+				  RE.write(0)
+				})
+			})
+		})
+	}
+}
 
 function checksum(hexstring) {
 	let TABLE = [
