@@ -94,7 +94,6 @@ if (message.type in ignore) {
 //	console.log("Data: " + message.hex)
 }
 if (message.type == "10bf06" && temp==0) {
-	// web site for CRC checksum : http://www.sunshine2k.de/coding/javascript/crc/crc_js.html
 	//	sendData('0610bf2061c9') //06 10 bf 20 61 c9
   sendData('10bf2060') //06 10 bf 20 61 c9
 
@@ -159,6 +158,8 @@ function transmit(asciiString) {
 }
 
 function checksum(hexstring) {
+	// web site for CRC checksum : http://www.sunshine2k.de/coding/javascript/crc/crc_js.html
+
 	let TABLE = [
 	  0x00, 0x07, 0x0e, 0x09, 0x1c, 0x1b, 0x12, 0x15, 0x38, 0x3f, 0x36, 0x31, 0x24, 0x23, 0x2a, 0x2d,
 	  0x70, 0x77, 0x7e, 0x79, 0x6c, 0x6b, 0x62, 0x65, 0x48, 0x4f, 0x46, 0x41, 0x54, 0x53, 0x5a, 0x5d,
