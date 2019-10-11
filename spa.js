@@ -12,7 +12,12 @@ process.on('SIGINT', function () {
 })
 
 
-// Set up message translation matrix
+// Store all items in memory
+let spa = {
+	outbox : [] // Messages waiting to be sent to spa
+};
+
+// Set up message translation matrix (codes must be unique as they are used to store data in spa{})
 let translate = { // Status update
 	"ff af 13" : { 
 		"description" : "Status udpate",
@@ -102,7 +107,7 @@ parser.on('data', function(data) {
 		"hex" : data.match(/../g).join(" "),
 		"length" : parseInt(data.substr(0,2),16), // First byte is length (number of bytes in message) (2 characters in hex per byte, so number of characters is twice this number)
 		"type" : data.substr(2,6), // Next 6 bytes is type of message
-		"content" : data.substring(8,data.length-2).match(/../g) // Slice to the end (except the checksum) and put into array, split two characters at a time (the hex code)
+		"content" : data.substring(8,data.length-2).match(/../g), // Slice to the end (except the checksum) and put into array, split two characters at a time (the hex code)
 		"checksum" : data.substr(-2,2) // Last byte is checksum
 	}
 
@@ -112,49 +117,27 @@ parser.on('data', function(data) {
 		message.type = message.type.substr(0,2) + " " + message.type.substr(2,2) + " " + message.type.substr(4,2);
 		
 		// Translate message
-		if (message.type in translate) {
-//console.log(translate[message.type].description)
+		if (message.type == "10 bf 06" && spa.outbox.length > 0) { // Ready for command (I think??) and messages ready to be sent
+			spa.outbox[0]() // Execute first message function in the queue (and probably the only one)
+			spa.outbox.shift(); // Remove message function
 
-			let codeLine = translate[message.type].codeLine; // Order of codes
-			let codes = translate[message.type].codes; // Translation of codes
+		} else if (message.type in incoming) {
+			let codeLine = incoming[message.type].codeLine; // Order of codes
+			let codes = incoming[message.type].codes; // Translation of codes
+//console.log(incoming[message.type].description)
 
 			// Go through message content and translate byte by byte
 			for (let i=0; i<message.length; i++) {
-				if (codeLine[i] in codes) { // If a code exists in codeLine, store in memory
-					console.log(codes[codeLine[i]] + " ==> " + parseInt(message.content[i],16))
+				if (codeLine[i] in codes) { // If a code exists in codeLine, store in spa{}
+					spa(codes[codeLine[i]] = parseInt(message.content[i],16))
 				}
 			}
 		}
 	}
-
-
-
-// For testing only:
-	console.log("Data: " + message.hex)
-let ignore = ["10bf06","10bf07","febf00","ffaf13"]
-if (message.type in ignore) {
-//	console.log("Data: " + message.hex)
-}
-if (message.type == "10bf06" && temp==0) {
-	//	sendData('0610bf2061c9') //06 10 bf 20 61 c9
-  sendData('10bf2060') //06 10 bf 20 61 c9
-
-
-}
-
 })
 
 
-function sendData(data) {
-
-// when sending data: prepare the message first, then wait for opportunity to send it (wait for 10bf06 message)
-// need to double check how reliable messsage sending is
-// when switching back to listening, might get a message length error at first since we might be coming back in
-//    in the middle of a message
-
-
-	console.log("Sending: " + data); // For testing only
-	
+function prepareMessage(data) {
 	// Compute length of final message (+1 for length byte and +1 for checksum byte)
 	let length = data.length/2 + 2;
 	data = length.toString(16).padStart(2,"0") + data;
@@ -172,11 +155,12 @@ function sendData(data) {
 		asciiString = asciiString + String.fromCharCode(parseInt(data.substr(i*2,2),16))
 	}
 
-	transmit(asciiString)() // Returns a function that needs to be executed right away
+	// Add to message ready to send queue (the message is a whole function)
+	spa.outbox.push(getTransmissionFunc(asciiString));
 }
 
 
-function transmit(asciiString) {
+function getTransmissionFunc(asciiString) { // Returns a function that needs to be executed when sending message
 	return 	function() {
 		RE_DE.write(1, function() { // Switch RS485 module to transmit
 			port.write(asciiString, 'ascii', function(err) {
