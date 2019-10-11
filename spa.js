@@ -11,6 +11,29 @@ process.on('SIGINT', function () {
 	process.exit()
 })
 
+// Set up web server
+const express = require('express'); // Web server
+const app = express();
+const server = require('http').createServer(app);
+server.listen(9000); // Start the webserver on port 9000
+app.use(express.static(__dirname + '/html')); // Tell the server location of the static web pages
+
+// Web socket server
+io = require('socket.io').listen(server);
+
+io.on('connection', function(socket){
+  // Initial connection: send all params to client that just connected
+  for (let key in spa) {
+		socket.emit('data',{"id" : key, "value" : spa[key]});
+	}
+
+  // Messages received
+  socket.on('command', function(command) {
+//  	console.log('SOCKET.IO - Received message: ' + command);
+    sendCommand(command.type,command.param);
+  });
+});
+
 
 // Store all items in memory
 let spa = {
@@ -18,7 +41,7 @@ let spa = {
 };
 
 // Set up message translation matrix (codes must be unique as they are used to store data in spa{})
-let translate = { // Status update
+let incoming = { // Status update
 	"ff af 13" : { 
 		"description" : "Status udpate",
 		"codeLine" : "00 F1 CT HH MM F2 00 00 00 F3 F4 PP 00 CP LF 00 00 00 00 00 ST 00 00 00".split(" "),
@@ -52,44 +75,12 @@ let translate = { // Status update
 	"0a bf 2e" : { // Control configuration 2?? Not confirmed
 		
 	},
-	"" : {
-		
-	},
-	"" : {
-		
-	},
-	"" : {
-		
-	},
-	"" : {
-		
-	},
-	"" : {
-		
-	},
-	"" : {
-		
-	},
-	"" : {
-		
-	},
-	"" : {
-		
-	},
-	"" : {
-		
-	},
-	"" : {
-		
-	},	
-/*	"10bf06" : {
-		"description" : "Unknown1",
-	},
-*/	
+
 	"" : {
 		
 	}
 }
+
 
 // Set up serial port
 const SerialPort = require('serialport');
@@ -135,6 +126,63 @@ parser.on('data', function(data) {
 		}
 	}
 })
+
+
+function sendCommand(type,param) {
+	if (type in outgoing) {
+		let message = type.replace(/ /g, ''); // Take out the spaces
+
+// Outgoing message matrix
+let outgoing = {
+	"configRequest" : { // The app sends this message shortly after connecting
+	  "type" : "0a bf 04", "message" : ""
+	},
+
+	"filterConfigRequest" : { // You must have previously sent general configuration request before sending this
+		"type" : "0a bf 22", "message" : "01 00 00"
+	},
+
+	"toggleItem" : {
+		"type" : "0a bf 11", "message" : "II 00", "allowed" : ["04", "05", "11", "51", "50"]
+		/* II - item:
+   	0x04 - pump 1
+   	0x05 - pump 2
+   	0x11 - light 1
+   	0x51 - heating mode
+   	0x50 - temperature range */
+	},
+
+	"setTemp" : {
+		"type" : "0a bf 20", "message" : "TT"
+		/*  TT - the temperature, doubled if in Celsius
+		range is 80-104 for F, 26-40 for C in high range
+		range is 50-80 for F, 10-26 for C in low range */
+	},
+
+	"setTempScale" : {
+		"type" : "0a bf 27", "message" : "01 TS", "allowed" : ["00", "01"]
+		/* TS - Temperature Scale
+   	0x00 - Fahrenheit
+   	0x01 - Celsius */
+	},
+
+	"setTime" : { // You must have previously sent general configuration request before sending this
+		"type" : "0a bf 21", "message" : "HH MM"
+		/* HH - Hour. The high bit enables 24-hour time
+ 		MM - Minute
+		*/
+	},
+
+	"controlConfigRequest" : { // You must have previously sent general configuration request before sending this
+		"type" : "0a bf 22", "message" : "02 00 00"
+		/* Sent when the app goes to the Controls screen. First it sends it with arguments
+		of 02 00 00, then it gets a response, and then sends it again with arguments of
+		00 00 01. */
+	},
+}
+	}
+	//prepareMessage();
+}
 
 
 function prepareMessage(data) {
