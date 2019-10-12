@@ -128,60 +128,62 @@ parser.on('data', function(data) {
 })
 
 
-function sendCommand(type,param) {
-	if (type in outgoing) {
-		let message = type.replace(/ /g, ''); // Take out the spaces
-
-// Outgoing message matrix
-let outgoing = {
-	"configRequest" : { // The app sends this message shortly after connecting
-	  "type" : "0a bf 04", "message" : ""
-	},
-
-	"filterConfigRequest" : { // You must have previously sent general configuration request before sending this
-		"type" : "0a bf 22", "message" : "01 00 00"
-	},
-
-	"toggleItem" : {
-		"type" : "0a bf 11", "message" : "II 00", "allowed" : ["04", "05", "11", "51", "50"]
-		/* II - item:
-   	0x04 - pump 1
-   	0x05 - pump 2
-   	0x11 - light 1
-   	0x51 - heating mode
-   	0x50 - temperature range */
-	},
-
-	"setTemp" : {
-		"type" : "0a bf 20", "message" : "TT"
-		/*  TT - the temperature, doubled if in Celsius
-		range is 80-104 for F, 26-40 for C in high range
-		range is 50-80 for F, 10-26 for C in low range */
-	},
-
-	"setTempScale" : {
-		"type" : "0a bf 27", "message" : "01 TS", "allowed" : ["00", "01"]
-		/* TS - Temperature Scale
-   	0x00 - Fahrenheit
-   	0x01 - Celsius */
-	},
-
-	"setTime" : { // You must have previously sent general configuration request before sending this
-		"type" : "0a bf 21", "message" : "HH MM"
-		/* HH - Hour. The high bit enables 24-hour time
- 		MM - Minute
-		*/
-	},
-
-	"controlConfigRequest" : { // You must have previously sent general configuration request before sending this
-		"type" : "0a bf 22", "message" : "02 00 00"
-		/* Sent when the app goes to the Controls screen. First it sends it with arguments
-		of 02 00 00, then it gets a response, and then sends it again with arguments of
-		00 00 01. */
-	},
-}
+function sendCommand(request,param) {
+  let type;
+  let content = "";
+  
+	if (request == "configRequest") {
+  	type = "0a bf 04";
+		
+	} else if (request == "filterConfigRequest") {
+  	type = "0a bf 22";
+		content = "01 00 00";
+		
+	} else if (request == "toggleItem") {
+  	type = "0a bf 11";
+		
+		let allowed = {"pump1" : "04", "pump2" : "05", "light" : "11", "heatMode" : "51", "tempRange" : "50"};
+		if (param in allowed) {
+			content = allowed[param] + "00";
+		} else {
+			return "Error in toggleItem"
+		}
+		
+	} else if (request == "setTemp") {
+  	type = "0a bf 20";
+		
+		if (param >= 80 and param <= 104) {
+			content = param.toString(16).padStart(2,"0");
+		} else {
+			return "Error in setTemp"
+		}
+		
+	} else if (request == "setTempScale") {
+  	type = "0a bf 27";
+		
+		if (param == 0 or param = 1) { // 0 : Fahrenheit, 1 : Celsius
+			content = param.toString(16).padStart(2,"0");
+		} else {
+			return "Error in setTempScale"
+		}
+	} else if (request == "setTime") {  // Expects param to be in HH:MM format
+  	type = "0a bf 21";
+		param = param.split(":"); // Converts to an array with [0] as hours and [1] as minutes
+		
+		if (param[0] >=0 && param[1] <=23 && param[1] >=0 && param[1] <= 59) { // Check hours and minutes within proper range
+			content = param[0].toString(16).padStart(2,"0") + param[1].toString(16).padStart(2,"0");
+		} else {
+			return "Error in setTime"
+		}
+	} else if (request == "controlConfigRequest") {  // You must have previously sent general configuration request before sending this
+  	type = "0a bf 22";
+		content = "02 00 00";
 	}
-	//prepareMessage();
+	
+	let message = (type + content).replace(/ /g, ''); // Take out the spaces;
+	prepareMessage(message);
+	
+	return "OK"
 }
 
 
