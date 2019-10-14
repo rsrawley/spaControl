@@ -3,7 +3,6 @@ let gpio = require('onoff').Gpio;
 let Vcc = new gpio(18,'high'); // Physical pin 12
 let RE_DE = new gpio(23,'low'); // Physical pin 16
 
-
 // Release all GPIOs on exit
 process.on('SIGINT', function () {
 	Vcc.unexport();
@@ -24,15 +23,23 @@ io = require('socket.io').listen(server);
 io.on('connection', function(socket){
   // Initial connection: send all params to client that just connected
   for (let key in spa) {
-		socket.emit('data',{"id" : key, "value" : spa[key]});
+		if (key != "outbox") {
+			socket.emit('data',{"id" : key, "value" : spa[key]});
+		}
 	}
 
   // Messages received
   socket.on('command', function(command) {
-//  	console.log('SOCKET.IO - Received message: ' + command);
-    sendCommand(command.type,command.param);
-  });
-});
+  	console.log('SOCKET.IO - Received message: ' + JSON.stringify(command));
+		sendCommand(command.type,command.param,checkError);
+  })
+})
+
+
+// Sends message back if an error in sending command
+function checkError(error) {
+	socket.emit('error',error)
+}
 
 
 // Store all items in memory
@@ -74,10 +81,6 @@ let incoming = { // Status update
 
 	"0a bf 2e" : { // Control configuration 2?? Not confirmed
 		
-	},
-
-	"" : {
-		
 	}
 }
 
@@ -108,7 +111,7 @@ parser.on('data', function(data) {
 		message.type = message.type.substr(0,2) + " " + message.type.substr(2,2) + " " + message.type.substr(4,2);
 		
 		// Translate message
-		if (message.type == "10 bf 06" && spa.outbox.length > 0) { // Ready for command (I think??) and messages ready to be sent
+		if (message.type == "10 bf 06" && spa.outbox.length > 0) { // "Ready for command" (I think??) and messages ready to be sent
 			spa.outbox[0]() // Execute first message function in the queue (and probably the only one)
 			spa.outbox.shift(); // Remove message function
 
@@ -120,7 +123,8 @@ parser.on('data', function(data) {
 			// Go through message content and translate byte by byte
 			for (let i=0; i<message.length; i++) {
 				if (codeLine[i] in codes) { // If a code exists in codeLine, store in spa{}
-					spa(codes[codeLine[i]] = parseInt(message.content[i],16))
+					spa[codes[codeLine[i]]] = parseInt(message.content[i],16) // Update items in memory
+					socket.emit('data',{"id" : codes[codeLine[i]], "value" : spa[codes[codeLine[i]]]}); // Send to all connected clients
 				}
 			}
 		}
@@ -128,7 +132,7 @@ parser.on('data', function(data) {
 })
 
 
-function sendCommand(request,param) {
+function sendCommand(request,param,callBackError) {
   let type;
   let content = "";
   
@@ -146,26 +150,27 @@ function sendCommand(request,param) {
 		if (param in allowed) {
 			content = allowed[param] + "00";
 		} else {
-			return "Error in toggleItem"
+			callBackError("Error in toggleItem");
 		}
 		
 	} else if (request == "setTemp") {
   	type = "0a bf 20";
 		
-		if (param >= 80 and param <= 104) {
+		if (param >= 80 && param <= 104) {
 			content = param.toString(16).padStart(2,"0");
 		} else {
-			return "Error in setTemp"
+			callBackError("Error in setTemp");
 		}
 		
 	} else if (request == "setTempScale") {
   	type = "0a bf 27";
 		
-		if (param == 0 or param = 1) { // 0 : Fahrenheit, 1 : Celsius
+		if (param == 0 || param == 1) { // 0 : Fahrenheit, 1 : Celsius
 			content = param.toString(16).padStart(2,"0");
 		} else {
-			return "Error in setTempScale"
+			callBackError("Error in setTempScale");
 		}
+		
 	} else if (request == "setTime") {  // Expects param to be in HH:MM format
   	type = "0a bf 21";
 		param = param.split(":"); // Converts to an array with [0] as hours and [1] as minutes
@@ -173,21 +178,24 @@ function sendCommand(request,param) {
 		if (param[0] >=0 && param[1] <=23 && param[1] >=0 && param[1] <= 59) { // Check hours and minutes within proper range
 			content = param[0].toString(16).padStart(2,"0") + param[1].toString(16).padStart(2,"0");
 		} else {
-			return "Error in setTime"
+			callBackError("Error in setTime");
 		}
+		
 	} else if (request == "controlConfigRequest") {  // You must have previously sent general configuration request before sending this
   	type = "0a bf 22";
 		content = "02 00 00";
 	}
 	
-	let message = (type + content).replace(/ /g, ''); // Take out the spaces;
+	let message = type + content;
 	prepareMessage(message);
-	
-	return "OK"
 }
 
 
+// Get message ready for sending and add it to outbox queue
 function prepareMessage(data) {
+	// Remove all spaces
+	data = data.replace(/ /g, '');
+	
 	// Compute length of final message (+1 for length byte and +1 for checksum byte)
 	let length = data.length/2 + 2;
 	data = length.toString(16).padStart(2,"0") + data;
@@ -210,7 +218,8 @@ function prepareMessage(data) {
 }
 
 
-function getTransmissionFunc(asciiString) { // Returns a function that needs to be executed when sending message
+// Returns a function that needs to be executed when sending message
+function getTransmissionFunc(asciiString) { 
 	return 	function() {
 		RE_DE.write(1, function() { // Switch RS485 module to transmit
 			port.write(asciiString, 'ascii', function(err) {
@@ -226,6 +235,7 @@ function getTransmissionFunc(asciiString) { // Returns a function that needs to 
 }
 
 
+// Finds the CRC-8 checksum for the given message (in hexstring)
 function checksum(hexstring) {
 	// web site for CRC checksum : http://www.sunshine2k.de/coding/javascript/crc/crc_js.html
 
