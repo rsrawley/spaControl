@@ -10,7 +10,7 @@ let settings = [
 	["Pump status: ","PP"],
 	["Circulation pump: ","CP"],
 	["Lights: ","LF"],
-	["Set temperature","ST"]
+	["Set temperature: ","ST"]
 ];
 
 for (let i=0; i<settings.length; i++) {
@@ -53,12 +53,13 @@ socket.on('error',function(error) {
 
 
 socket.on('data',function(data) {
-	console.log(data);
-	document.getElementById(data.id).innerHTML = data.value;
+//	console.log(data);
+	document.getElementById(data.id).innerHTML = data.value + " (0x" + data.value.toString(16).padStart(2,"0") + ")";
 })
 
 
 // Send data to node server
 function sendValue(type,param) {
+	console.log(type,param)
 	socket.emit('command',{"type" : type, "param" : param});
 }

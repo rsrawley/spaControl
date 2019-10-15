@@ -38,7 +38,7 @@ io.on('connection', function(socket){
 
 // Sends message back if an error in sending command
 function checkError(error) {
-	socket.emit('error',error)
+	io.emit('error',error)
 }
 
 
@@ -51,19 +51,20 @@ let spa = {
 let incoming = { // Status update
 	"ff af 13" : { 
 		"description" : "Status udpate",
+						    //17 00 62 15 0a 00 00 00 00 08 0c 00 00 02 00 00 00 00 00 04 60 00 00 00 1e 00 00
 		"codeLine" : "00 F1 CT HH MM F2 00 00 00 F3 F4 PP 00 CP LF 00 00 00 00 00 ST 00 00 00".split(" "),
 		"codes" : {
 			"F1" : "Flags 1 (0x01 = Priming)",
-			"CT" : "Current temperature (in F)",
-			"HH" : "Hours",
-			"MM" : "Minutes",
+			"CT" : "Current temperature (in F)", // verified
+			"HH" : "Hours", // verified
+			"MM" : "Minutes", // verified
 			"F2" : "Flags 2 (0x03 = Heating Mode (0 = Ready, 1 = Rest, 3 = Ready in rest))",
 			"F3" : "Flags 3 (0x01 = Temperature scale or 0x02 = 24 hour time)",
 			"F4" : "Flags 4 (0x30 = Heating or 0x04 = Temperature range (0=low, 1=high))",
-			"PP" : "Pump status (0x03 for pump 1, 0x12 for pump 2)",
+			"PP" : "Pump status (0x02 for pump 1, 0x08 for pump 2)", // verified
 			"CP" : "Circ pump (0x02 = on)",
-			"LF" : "Light flag (0x03 for on)",
-			"ST" : "Set temperature"
+			"LF" : "Light flag (0x03 for on)", // verified
+			"ST" : "Set temperature" // verified
 		}
 	},
 	
@@ -93,6 +94,24 @@ const port = new SerialPort('/dev/ttyAMA0', {
 });
 const parser = port.pipe(new Delimiter({ delimiter: Buffer.from('7e', 'hex') }));
 
+
+
+
+/*
+// delete all these lines below!!!!!
+
+
+port.on('data', function (data) {
+  console.log('Data:', data)
+})
+
+let parser ={on:function(){}}// delete this!!!!!!!!!!!!!!!!!
+*/
+
+
+
+
+
 parser.on('data', function(data) {
 	data = data.hexSlice(); // Convert to hexadecimal string
 
@@ -105,6 +124,9 @@ parser.on('data', function(data) {
 		"checksum" : data.substr(-2,2) // Last byte is checksum
 	}
 
+//console.log(message.hex)	
+	
+	
 	if (data.length == message.length*2 && checksum(data.substring(0,data.length-2)) == message.checksum) { // Check proper message length and checksum
 		
 		// Insert spaces every two characters to match "human readable" object type defined at top of program
@@ -112,21 +134,33 @@ parser.on('data', function(data) {
 		
 		// Translate message
 		if (message.type == "10 bf 06" && spa.outbox.length > 0) { // "Ready for command" (I think??) and messages ready to be sent
+			
 			spa.outbox[0]() // Execute first message function in the queue (and probably the only one)
 			spa.outbox.shift(); // Remove message function
 
 		} else if (message.type in incoming) {
+			
 			let codeLine = incoming[message.type].codeLine; // Order of codes
 			let codes = incoming[message.type].codes; // Translation of codes
-//console.log(incoming[message.type].description)
 
+if (incoming[message.type].description.search(/\?/) == -1) {
+console.log(incoming[message.type].description, message.type + "|" + message.content.join(" "))
+}
+			
 			// Go through message content and translate byte by byte
-			for (let i=0; i<message.length; i++) {
-				if (codeLine[i] in codes) { // If a code exists in codeLine, store in spa{}
-					spa[codes[codeLine[i]]] = parseInt(message.content[i],16) // Update items in memory
-					socket.emit('data',{"id" : codes[codeLine[i]], "value" : spa[codes[codeLine[i]]]}); // Send to all connected clients
+			if (codeLine != undefined) { // Has a code line been defined for this message type ?
+				for (let i=0; i<message.length; i++) {
+					if (codeLine[i] in codes) { // If a code exists in codeLine, store in spa{}
+						spa[codeLine[i]] = parseInt(message.content[i],16) // Update items in memory
+						io.emit('data',{"id" : codeLine[i], "value" : spa[codeLine[i]]}); // Send to all connected clients
+					}
 				}
 			}
+			
+		} else {
+			
+			// All other messages not yet catalogued
+			console.log(message.hex);
 		}
 	}
 })
@@ -157,7 +191,7 @@ function sendCommand(request,param,callBackError) {
   	type = "0a bf 20";
 		
 		if (param >= 80 && param <= 104) {
-			content = param.toString(16).padStart(2,"0");
+			content = decHex(param);
 		} else {
 			callBackError("Error in setTemp");
 		}
@@ -166,7 +200,7 @@ function sendCommand(request,param,callBackError) {
   	type = "0a bf 27";
 		
 		if (param == 0 || param == 1) { // 0 : Fahrenheit, 1 : Celsius
-			content = param.toString(16).padStart(2,"0");
+			content = decHex(param);
 		} else {
 			callBackError("Error in setTempScale");
 		}
@@ -176,7 +210,7 @@ function sendCommand(request,param,callBackError) {
 		param = param.split(":"); // Converts to an array with [0] as hours and [1] as minutes
 		
 		if (param[0] >=0 && param[1] <=23 && param[1] >=0 && param[1] <= 59) { // Check hours and minutes within proper range
-			content = param[0].toString(16).padStart(2,"0") + param[1].toString(16).padStart(2,"0");
+			content = decHex(param[0]) + decHex(param[1]);
 		} else {
 			callBackError("Error in setTime");
 		}
@@ -190,6 +224,11 @@ function sendCommand(request,param,callBackError) {
 	prepareMessage(message);
 }
 
+
+// Converts a decimal into a hexadecimal
+function decHex(number) {
+	return parseInt(number,10).toString(16).padStart(2,"0")
+}
 
 // Get message ready for sending and add it to outbox queue
 function prepareMessage(data) {
