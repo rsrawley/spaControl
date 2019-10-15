@@ -68,6 +68,14 @@ let incoming = { // Status update
 		}
 	},
 	
+/*
+08 10 bf 22 02 00 00 0a
+1a 10 bf 24 64 c9 2c 00 4d 42 50 35 30 31 55 58 03 a8 2f 63 83 01 06 05 00 46
+08 10 bf 22 08 00 00 8d
+17 10 bf 26 00 87 00 00 00 01 00 00 01 00 00 00 00 00 00 00 00 00 6b
+06 10 bf e0 03 0d
+*/
+	
 	"10 bf 06" : {
 		"description" : "Ready for command???" // Not confirmed
 	},
