@@ -1,3 +1,11 @@
+/* Use
+
+node spa.js | tee test1
+
+in order to see output on terminal and save it to file
+*/
+
+
 // Set up GPIO access
 let gpio = require('onoff').Gpio;
 let Vcc = new gpio(18,'high'); // Physical pin 12
@@ -40,6 +48,33 @@ io.on('connection', function(socket){
 function checkError(error) {
 	io.emit('error',error)
 }
+
+
+// Every minute, check the time is right and adjust (if spa turned off, or daylight saving change)
+setInterval(function (){
+	if (spa.HH != undefined) { // Make sure we already have a connection
+		let currentDate = new Date();
+		let hours = currentDate.getHours();
+		let minutes = currentDate.getMinutes();
+		let currentTime = hours * 60 + minutes;
+
+		let spaTime = spa.HH * 60 + spa.MM;
+
+		// As long as spa time is within +/- 1 min of actual time, we're not modifying it
+		let lowerLimit = currentTime - 1;
+		let upperLimit = currentTime + 1;
+		if (lowerLimit < 0) {
+			lowerLimit += 1440; // Add a "day" (60 min * 24 h)
+		}
+		if (upperLimit > 1439) {
+			upperLimit -+ 1440 // Subtract a "day"
+		}
+
+		if (!(spaTime >= lowerLimit && spaTime <= upperLimit)) { // If not in right time, change it
+			sendCommand("setTime",[hours,minutes],checkError);
+		}
+	}
+},60000)
 
 
 // Store all items in memory
@@ -154,7 +189,7 @@ parser.on('data', function(data) {
 		
 		// Translate message
 		if (message.type == "10 bf 06" && spa.outbox.length > 0) { // "Ready for command" (I think??) and messages ready to be sent
-			
+
 			spa.outbox[0]() // Execute first message function in the queue (and probably the only one)
 			spa.outbox.shift(); // Remove message function
 
@@ -171,18 +206,20 @@ if (spa.temp[message.type] == undefined) {
 	spa.temp[message.type] = []
 }
 if (spa.temp[message.type].join(" ") != message.content.join(" ")) {  // let's store current status update and see what's changed with the last one
-	for (let i=0; i<spa.temp[message.type].length;i++) {
+	for (let i=0; i<message.content.length;i++) {
 		if (spa.temp[message.type][i] != message.content[i]) {
-			output += "\033[93m" // splash of color
+			output += "\033[93m" // splash of yellow color
 		} else {
-			output += "\033[37m"
+			output += "\033[37m" // normal white
 		}
 		output += message.content[i] + " "
 	}
+	output += "\033[37m" // in case last hex is yellow
+
 	console.log("type: ",message.type," (",incoming[message.type].description,")")
 	console.log("old: ",spa.temp[message.type].join(" "))
 	console.log("new: ",output)
-	console.log("code:",incoming[message.type].codeLine)
+	console.log("code:",incoming[message.type].codeLine.join(" "))
 	spa.temp[message.type] = [...message.content] // clone array
 }
 /*
@@ -257,8 +294,7 @@ function sendCommand(request,param,callBackError) {
 		
 	} else if (request == "setTime") {  // Expects param to be in HH:MM format
   	type = "0a bf 21";
-		param = param.split(":"); // Converts to an array with [0] as hours and [1] as minutes
-		
+				
 		if (param[0] >=0 && param[1] <=23 && param[1] >=0 && param[1] <= 59) { // Check hours and minutes within proper range
 			content = decHex(param[0]) + decHex(param[1]);
 		} else {
