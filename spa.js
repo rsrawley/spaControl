@@ -23,7 +23,7 @@ io = require('socket.io').listen(server);
 io.on('connection', function(socket){
   // Initial connection: send all params to client that just connected
   for (let key in spa) {
-		if (key != "outbox") {
+		if (key != "outbox" && key != "temp") { // "temp" can be removed -- it's for helping finding codes
 			socket.emit('data',{"id" : key, "value" : spa[key]});
 		}
 	}
@@ -47,6 +47,8 @@ let spa = {
 	outbox : [] // Messages waiting to be sent to spa
 };
 
+spa.temp=[]; // delete this line!!!!!!!!!!!
+
 // Set up message translation matrix (codes must be unique as they are used to store data in spa{})
 let incoming = { // Status update
 	"ff af 13" : { 
@@ -68,6 +70,7 @@ let incoming = { // Status update
 		}
 	},
 	
+// heating mode: 28 at first, then 44
 /*
 08 10 bf 22 02 00 00 0a
 1a 10 bf 24 64 c9 2c 00 4d 42 50 35 30 31 55 58 03 a8 2f 63 83 01 06 05 00 46
@@ -85,11 +88,15 @@ let incoming = { // Status update
 	},
 
 	"0a bf 94" : { // Control configuration?? Not confirmed
-		
+		"description" : ""
 	},
 
 	"0a bf 2e" : { // Control configuration 2?? Not confirmed
-		
+		"description" : ""
+	},
+
+	"fe bf 00" : { // no idea, emitted every 1 second roughly
+		"description" : "?"
 	}
 }
 
@@ -132,7 +139,12 @@ parser.on('data', function(data) {
 		"checksum" : data.substr(-2,2) // Last byte is checksum
 	}
 
-//console.log(message.hex)	
+	// In case no content in message (just contains length, message type and checksum)
+	if (message.content == null) {
+		message.content = []
+	}
+
+//console.log(message.hex)
 	
 	
 	if (data.length == message.length*2 && checksum(data.substring(0,data.length-2)) == message.checksum) { // Check proper message length and checksum
@@ -151,10 +163,38 @@ parser.on('data', function(data) {
 			let codeLine = incoming[message.type].codeLine; // Order of codes
 			let codes = incoming[message.type].codes; // Translation of codes
 
-if (incoming[message.type].description.search(/\?/) == -1) {
-console.log(incoming[message.type].description, message.type + "|" + message.content.join(" "))
+
+
+// delete everything between these comments
+let output=""
+if (spa.temp[message.type] == undefined) {
+	spa.temp[message.type] = []
 }
-			
+if (spa.temp[message.type].join(" ") != message.content.join(" ")) {  // let's store current status update and see what's changed with the last one
+	for (let i=0; i<spa.temp[message.type].length;i++) {
+		if (spa.temp[message.type][i] != message.content[i]) {
+			output += "\033[93m" // splash of color
+		} else {
+			output += "\033[37m"
+		}
+		output += message.content[i] + " "
+	}
+	console.log("type: ",message.type," (",incoming[message.type].description,")")
+	console.log("old: ",spa.temp[message.type].join(" "))
+	console.log("new: ",output)
+	console.log("code:",incoming[message.type].codeLine)
+	spa.temp[message.type] = [...message.content] // clone array
+}
+/*
+if (incoming[message.type].description.search(/\?/) == -1) {
+	console.log(incoming[message.type].description, message.type + "|" + message.content.join(" "))
+}
+*/
+// end of delete everything between comments
+	
+
+
+
 			// Go through message content and translate byte by byte
 			if (codeLine != undefined) { // Has a code line been defined for this message type ?
 				for (let i=0; i<message.length; i++) {
@@ -168,7 +208,9 @@ console.log(incoming[message.type].description, message.type + "|" + message.con
 		} else {
 			
 			// All other messages not yet catalogued
-			console.log(message.hex);
+			if (!(message.type in incoming)) {
+				console.log(message.hex);
+			}
 		}
 	}
 })
@@ -315,3 +357,5 @@ function checksum(hexstring) {
 
   return crc.toString(16).padStart(2,"0");
 }
+
+console.log("ready");
