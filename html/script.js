@@ -1,16 +1,29 @@
 // Set up parameters
 let settings = [
-	["Priming: ","F1"],
+	["Priming: ","PF"],
 	["Current temperature: ","CT"],
 	["Hours: ","HH"],
 	["Minutes: ","MM"],
-	["Heating mode: ","F2"],
-	["Temperature scale: ","F3"],
-	["Heating: ","F4"],
+	["Heating mode: ","HF"],
+	["Temp sensor A: ","TA"],
+	["Temp sensor B: ","TB"],
+	["Filter cycle: ","FC"],
 	["Pump status: ","PP"],
 	["Circulation pump: ","CP"],
 	["Lights: ","LF"],
-	["Set temperature: ","ST"]
+	["Cleanup cycle: ","CC"],
+	["Temperature scale: ","F3"],
+	["Set temperature: ","ST"],
+	["Heat mode: ","H2"],
+
+	["Filter 1 start hour (always 0-24): ","1H"],
+	["Filter 1 start minute: ","1M"],
+	["Filter 1 duration hours: ","1D"],
+	["Filter 2 duration minutes: ","1E"],
+	["Filter 2 start hour: ","2H"],
+	["Filter 2 start minute: ","2M"],
+	["Filter 2 duration hours: ","2D"],
+	["Filter 2 duration minutes: ","2E"]
 ];
 
 for (let i=0; i<settings.length; i++) {
@@ -44,6 +57,23 @@ document.getElementById("setTempButton").addEventListener("click", function(){
 });
 
 
+// Special buttons
+function letsgo() {
+	if (parseInt(document.getElementById("LF").innerHTML,10) != 3) { // Lights not on?
+		sendValue("toggleItem","light");
+	}
+	sendValue("setTemp","100");
+}
+
+function alldone() {
+	console.log(document.getElementById("LF").innerHTML,typeof(document.getElementById("LF").innerHTML),document.getElementById("LF").innerHTML == 3)
+	if (parseInt(document.getElementById("LF").innerHTML,10) == 3) { // Lights on?
+		sendValue("toggleItem","light");
+	}
+	sendValue("setTemp","96");
+}
+
+
 // socket.io functions
 let socket = io();
 
@@ -53,8 +83,16 @@ socket.on('error',function(error) {
 
 
 socket.on('data',function(data) {
-//	console.log(data);
-	document.getElementById(data.id).innerHTML = data.value + " (0x" + data.value.toString(16).padStart(2,"0") + ")";
+	//console.log(data);
+	if (document.getElementById(data.id)) {
+		if (data.id == "2H") { // Filter start hour also has on/off info
+			// filter 2 cycle on(1) or off(0)
+			let filter2 = Math.floor(parseInt(data.value,16)/128) // this is not displayed right now
+			data.value = (parseInt(data.value,16) % 128).toString(16) // mod 128 to take out high bit
+		}
+
+		document.getElementById(data.id).innerHTML = parseInt(data.value,16) + " (0x" + data.value + ")";
+	}
 })
 
 

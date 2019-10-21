@@ -1,6 +1,6 @@
 /* Use
 
-node spa.js | tee test1
+ node spa.js 2>&1 | tee test1
 
 in order to see output on terminal and save it to file
 */
@@ -32,7 +32,7 @@ io.on('connection', function(socket){
   // Initial connection: send all params to client that just connected
   for (let key in spa) {
 		if (key != "outbox" && key != "temp") { // "temp" can be removed -- it's for helping finding codes
-			socket.emit('data',{"id" : key, "value" : spa[key]});
+			io.emit('data',{"id" : key, "value" : spa[key]});
 		}
 	}
 
@@ -51,26 +51,19 @@ function checkError(error) {
 
 
 // Every minute, check the time is right and adjust (if spa turned off, or daylight saving change)
-setInterval(function (){
+setInterval(function () {
 	if (spa.HH != undefined) { // Make sure we already have a connection
+		// It's easier to use JS date objects to handle checking before and after midnight
 		let currentDate = new Date();
 		let hours = currentDate.getHours();
 		let minutes = currentDate.getMinutes();
-		let currentTime = hours * 60 + minutes;
-
-		let spaTime = spa.HH * 60 + spa.MM;
+		
+		let spaTime = new Date(2019,10,19,spa.HH,spa.MM); // October 19, 2019 is an arbitrary date (I happened to work on this function that day)
 
 		// As long as spa time is within +/- 1 min of actual time, we're not modifying it
-		let lowerLimit = currentTime - 1;
-		let upperLimit = currentTime + 1;
-		if (lowerLimit < 0) {
-			lowerLimit += 1440; // Add a "day" (60 min * 24 h)
-		}
-		if (upperLimit > 1439) {
-			upperLimit -+ 1440 // Subtract a "day"
-		}
-
-		if (!(spaTime >= lowerLimit && spaTime <= upperLimit)) { // If not in right time, change it
+		let lowerLimit = new Date(2019,10,19,hours,minutes - 1);
+		let upperLimit = new Date(2019,10,19,hours,minutes + 1);
+		if (!(spaTime.getTime() >= lowerLimit.getTime() && spaTime.getTime() <= upperLimit.getTime())) { // If not in right time, change it
 			sendCommand("setTime",[hours,minutes],checkError);
 		}
 	}
@@ -89,19 +82,23 @@ let incoming = { // Status update
 	"ff af 13" : { 
 		"description" : "Status udpate",
 						    //17 00 62 15 0a 00 00 00 00 08 0c 00 00 02 00 00 00 00 00 04 60 00 00 00 1e 00 00
-		"codeLine" : "00 F1 CT HH MM F2 00 00 00 F3 F4 PP 00 CP LF 00 00 00 00 00 ST 00 00 00".split(" "),
+		"codeLine" : "00 PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CC ST 00 00 00 H2 00 00".split(" "),
 		"codes" : {
-			"F1" : "Flags 1 (0x01 = Priming)",
+			"PF" : "Priming flag (0x01 = Priming)",
 			"CT" : "Current temperature (in F)", // verified
 			"HH" : "Hours", // verified
 			"MM" : "Minutes", // verified
-			"F2" : "Flags 2 (0x03 = Heating Mode (0 = Ready, 1 = Rest, 3 = Ready in rest))",
-			"F3" : "Flags 3 (0x01 = Temperature scale or 0x02 = 24 hour time)",
-			"F4" : "Flags 4 (0x30 = Heating or 0x04 = Temperature range (0=low, 1=high))",
-			"PP" : "Pump status (0x02 for pump 1, 0x08 for pump 2)", // verified
-			"CP" : "Circ pump (0x02 = on)",
+			"HM" : "Heating mode (0x00 = Ready, 0x01 = Rest, 0x03?? = Ready in rest))", // verified for 0 and 1
+			"TA" : "Temp sensor A (inlet) goes to 3c if on hold???", // verified
+			"TB" : "Temp sensor B (outlet)", // verified
+			"FC" : "Filter cycle (04 = cycle 1, 08 = cycle 2, ?? = both??)", // verified
+			"HF" : "Heat flag (0x0c = not heating, 0x2c = preparing to heat, 0x1c = Heating, 0x08 = temp range low, 0x04 = on hold))", // verified
+			"PP" : "Pump status (0x02 for pump 1, 0x08 for pump 2, 0x0a for both -- added together)", // verified
+			"CP" : "Circ pump (0x00 = off, 0x02 = on)", // verified
 			"LF" : "Light flag (0x03 for on)", // verified
-			"ST" : "Set temperature" // verified
+			"CF" : "Cleanup cycle flag (0x04 off, 0x0c for on)",
+			"ST" : "Set temperature", // verified
+			"H2" : "Heat mode 2nd flag (0x00 = when HM is 01, 0x1e = when HM is 00)"
 		}
 	},
 	
@@ -113,23 +110,72 @@ let incoming = { // Status update
 17 10 bf 26 00 87 00 00 00 01 00 00 01 00 00 00 00 00 00 00 00 00 6b
 06 10 bf e0 03 0d
 */
-	
+
+	"10 bf 23" : { // Filter configuration
+		"description" : "Filter configuration",
+		"codeLine" : "1H 1M 1D 1E 2H 2M 2D 2E".split(" "),
+		"codes" : {
+			"1H" : "Filter 1 start hour (always 0-24)",
+			"1M" : "Filter 1 start minute",
+			"1D" : "Filter 1 duration hours",
+			"1E" : "Filter 2 duration minutes",
+			"2H" : "Filter 2 start hour, masking out the high order bit, which is used as an enable/disable flag (mod 128)",
+			"2M" : "Filter 2 start minute",
+			"2D" : "Filter 2 duration hours",
+			"2E" : "Filter 2 duration minutes"
+		}
+	},
+
+	"10 bf 26" : { // Control configuration 1
+		"description" : "Control configuration 1",
+						 	 // 00 87 00 00 00 01 00 00 01 00 00 00 00 00 00 00 00 00
+		"codeLine" : "".split(" "),
+		"codes" : {
+			"A" : ""
+		}
+	},
+
+	"ff af 26" : { // Control configuration
+		"description" : "Control configuration",
+						 	 // 00 87 00 01 00 01 00 00 01 00 00 00 00 00 00 00 00 00
+		"codeLine" : "00 00 RM TS TF CC 00 00 M8".split(" "),
+		"codes" : {
+			"RM" : "Reminders (0 = on, 1 = off)",
+			"TS" : "Temperature scale (0 = Fahrenheit, 1 = Celsius)",
+			"M8" : "M8 artificial intelligence (0 = off, 1 = on)",
+			"TF" : "Time format flag (0 = 12h, 1 = 24h)",
+			"CC" : "Cleaning cycle length (0 to 8, each integer is 0.5h increments)"
+		}
+	},
+
+	"0a bf 24" : { // Control configuration 2 ***seems same as ff af 26***!!!!!!!
+		"description" : "Control configuration 2",
+						 	 // 64 c9 2c 00 4d 42 50 35 30 31 55 58 03 a8 2f 63 83 01 06 05 00
+		"codeLine" : "".split(" "),
+		"codes" : {
+		}
+	},
+
+	"0a bf 25" : { // Control configuration 2
+		"description" : "Control configuration 2",
+						 	 // 09 03 32 63 50 68 49 03 41 02
+		"codeLine" : "".split(" "),
+		"codes" : {
+		}
+	},
+
 	"10 bf 06" : {
 		"description" : "Ready for command???" // Not confirmed
 	},
-
 	"10 bf 07" : {
 		"description" : "No command to send???" // Not confirmed
 	},
-
 	"0a bf 94" : { // Control configuration?? Not confirmed
 		"description" : ""
 	},
-
 	"0a bf 2e" : { // Control configuration 2?? Not confirmed
 		"description" : ""
 	},
-
 	"fe bf 00" : { // no idea, emitted every 1 second roughly
 		"description" : "?"
 	}
@@ -186,17 +232,6 @@ parser.on('data', function(data) {
 		
 		// Insert spaces every two characters to match "human readable" object type defined at top of program
 		message.type = message.type.substr(0,2) + " " + message.type.substr(2,2) + " " + message.type.substr(4,2);
-		
-		// Translate message
-		if (message.type == "10 bf 06" && spa.outbox.length > 0) { // "Ready for command" (I think??) and messages ready to be sent
-
-			spa.outbox[0]() // Execute first message function in the queue (and probably the only one)
-			spa.outbox.shift(); // Remove message function
-
-		} else if (message.type in incoming) {
-			
-			let codeLine = incoming[message.type].codeLine; // Order of codes
-			let codes = incoming[message.type].codes; // Translation of codes
 
 
 
@@ -216,10 +251,16 @@ if (spa.temp[message.type].join(" ") != message.content.join(" ")) {  // let's s
 	}
 	output += "\033[37m" // in case last hex is yellow
 
-	console.log("type: ",message.type," (",incoming[message.type].description,")")
-	console.log("old: ",spa.temp[message.type].join(" "))
+	if (incoming[message.type] != undefined) {
+		console.log("type: ",message.type," (",incoming[message.type].description,")")
+	} else {
+		console.log("type: ",message.type)
+	}
+		console.log("old: ",spa.temp[message.type].join(" "))
 	console.log("new: ",output)
-	console.log("code:",incoming[message.type].codeLine.join(" "))
+	if (incoming[message.type] != undefined) {
+		console.log("code:",incoming[message.type].codeLine.join(" "))
+	}
 	spa.temp[message.type] = [...message.content] // clone array
 }
 /*
@@ -228,15 +269,25 @@ if (incoming[message.type].description.search(/\?/) == -1) {
 }
 */
 // end of delete everything between comments
-	
 
 
+		
+		// Translate message
+		if (message.type == "10 bf 06" && spa.outbox.length > 0) { // "Ready for command" (I think??) and messages ready to be sent
+
+			spa.outbox[0]() // Execute first message function in the queue (and probably the only one)
+			spa.outbox.shift(); // Remove message function
+
+		} else if (message.type in incoming) {
+			
+			let codeLine = incoming[message.type].codeLine; // Order of codes
+			let codes = incoming[message.type].codes; // Translation of codes
 
 			// Go through message content and translate byte by byte
 			if (codeLine != undefined) { // Has a code line been defined for this message type ?
 				for (let i=0; i<message.length; i++) {
 					if (codeLine[i] in codes) { // If a code exists in codeLine, store in spa{}
-						spa[codeLine[i]] = parseInt(message.content[i],16) // Update items in memory
+						spa[codeLine[i]] = message.content[i]; // Update items in memory
 						io.emit('data',{"id" : codeLine[i], "value" : spa[codeLine[i]]}); // Send to all connected clients
 					}
 				}
@@ -246,7 +297,7 @@ if (incoming[message.type].description.search(/\?/) == -1) {
 			
 			// All other messages not yet catalogued
 			if (!(message.type in incoming)) {
-				console.log(message.hex);
+				//console.log(message.hex);
 			}
 		}
 	}
@@ -254,60 +305,103 @@ if (incoming[message.type].description.search(/\?/) == -1) {
 
 
 function sendCommand(request,param,callBackError) {
-  let type;
-  let content = "";
+  // Some messages need config requests to be sent first
+  let type = [];
+  let content = [];
   
-	if (request == "configRequest") {
-  	type = "0a bf 04";
+	if (request == "configRequest") { // not checked yet !!!!!
+  	type[0] = "10 bf 04";
 		
-	} else if (request == "filterConfigRequest") {
-  	type = "0a bf 22";
-		content = "01 00 00";
-		
-	} else if (request == "toggleItem") {
-  	type = "0a bf 11";
+	} else if (request == "toggleItem") { // verified
+  	type[0] = "10 bf 11";
 		
 		let allowed = {"pump1" : "04", "pump2" : "05", "light" : "11", "heatMode" : "51", "tempRange" : "50"};
 		if (param in allowed) {
-			content = allowed[param] + "00";
+			content[0] = allowed[param] + "00";
 		} else {
-			callBackError("Error in toggleItem");
+			callBackError("Error in " + request);
 		}
 		
-	} else if (request == "setTemp") {
-  	type = "0a bf 20";
-		
+	} else if (request == "setTemp") { // verified
+  	type[0] = "10 bf 20";
+//range is 80-104 for F, 26-40 for C in high range
+//range is 50-80 for F, 10-26 for C in low range		
 		if (param >= 80 && param <= 104) {
-			content = decHex(param);
+			content[0] = decHex(param);
 		} else {
-			callBackError("Error in setTemp");
+			callBackError("Error in " + request);
 		}
+			
+	} else if (request == "setTime") {  // Expects param to be in [HH,MM] format // verified
+  	type[0] = "10 bf 21";
+				
+		if (param[0] >=0 && param[0] <=23 && param[1] >=0 && param[1] <= 59) { // Check hours and minutes within proper range
+			content[0] = decHex(param[0]) + decHex(param[1]);
+		} else {
+			callBackError("Error in " + request);
+		}
+
+	} else if (request == "filterConfigRequest") { // verified
+  	type[0] = "10 bf 22";
+		content[0] = "01 00 00";
 		
-	} else if (request == "setTempScale") {
-  	type = "0a bf 27";
+	} else if (request == "controlConfigRequest") {  // verified
+  	type[0] = "10 bf 22";
+		content[0] = "08 00 00";
+
+	} else if (request == "setM8") {  // *** this is not working reliably ***
+  	type[0] = "10 bf 22"; // Send config request
+  	content[0] = "08 00 00";
+
+  	type[1] = "10 bf 22";				
+		if (param == 0 || param == 1) {
+			content[1] = "06" + decHex(param);
+		} else {
+			callBackError("Error in " + request);
+		}
+
+	} else if (request == "setTempScale") { // verified
+  	type[0] = "10 bf 27";
 		
 		if (param == 0 || param == 1) { // 0 : Fahrenheit, 1 : Celsius
-			content = decHex(param);
+			content[0] = "01" + decHex(param);
 		} else {
-			callBackError("Error in setTempScale");
+			callBackError("Error in " + request);
 		}
-		
-	} else if (request == "setTime") {  // Expects param to be in HH:MM format
-  	type = "0a bf 21";
+
+	} else if (request == "setTimeFormat") { // verified
+  	type[0] = "10 bf 27";
 				
-		if (param[0] >=0 && param[1] <=23 && param[1] >=0 && param[1] <= 59) { // Check hours and minutes within proper range
-			content = decHex(param[0]) + decHex(param[1]);
+		if (param == 0 || param == 1) {
+			content[0] = "02" + decHex(param);
 		} else {
-			callBackError("Error in setTime");
+			callBackError("Error in " + request);
 		}
-		
-	} else if (request == "controlConfigRequest") {  // You must have previously sent general configuration request before sending this
-  	type = "0a bf 22";
-		content = "02 00 00";
+
+	} else if (request == "setCleanCycle") { // verified
+  	type[0] = "10 bf 27";
+				
+		if (param >= 0 && param <= 8) { // Each integer represents 30 min increments
+			content[0] = "03" + decHex(param);
+		} else {
+			callBackError("Error in " + request);
+		}
+
+	} else if (request == "setReminders") { // does not work reliably!!!
+  	type[0] = "10 bf 27";	
+		content[0] = "00 01";
+
+	} else if (request == "") {
+  	type[0] = "";
 	}
-	
-	let message = type + content;
-	prepareMessage(message);
+
+	for (let i=0; i<type.length; i++) {
+		if (content[i] == undefined) {
+			content[i] = "";
+		}
+		let message = type[i] + content[i];
+		prepareMessage(message);
+	}
 }
 
 
