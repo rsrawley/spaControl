@@ -85,7 +85,7 @@ let incoming = { // Status update
 		"codeLine" : "00 PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CC ST 00 00 00 H2 00 00".split(" "),
 		"codes" : {
 			"PF" : "Priming flag (0x01 = Priming)",
-			"CT" : "Current temperature (in F)", // verified
+			"CT" : "Current temperature (in F) -- 00 means no temp reading", // verified
 			"HH" : "Hours", // verified
 			"MM" : "Minutes", // verified
 			"HM" : "Heating mode (0x00 = Ready, 0x01 = Rest, 0x03?? = Ready in rest))", // verified for 0 and 1
@@ -233,44 +233,8 @@ parser.on('data', function(data) {
 		// Insert spaces every two characters to match "human readable" object type defined at top of program
 		message.type = message.type.substr(0,2) + " " + message.type.substr(2,2) + " " + message.type.substr(4,2);
 
-
-
-// delete everything between these comments
-let output=""
-if (spa.temp[message.type] == undefined) {
-	spa.temp[message.type] = []
-}
-if (spa.temp[message.type].join(" ") != message.content.join(" ")) {  // let's store current status update and see what's changed with the last one
-	for (let i=0; i<message.content.length;i++) {
-		if (spa.temp[message.type][i] != message.content[i]) {
-			output += "\033[93m" // splash of yellow color
-		} else {
-			output += "\033[37m" // normal white
-		}
-		output += message.content[i] + " "
-	}
-	output += "\033[37m" // in case last hex is yellow
-
-	if (incoming[message.type] != undefined) {
-		console.log("type: ",message.type," (",incoming[message.type].description,")")
-	} else {
-		console.log("type: ",message.type)
-	}
-		console.log("old: ",spa.temp[message.type].join(" "))
-	console.log("new: ",output)
-	if (incoming[message.type] != undefined) {
-		console.log("code:",incoming[message.type].codeLine.join(" "))
-	}
-	spa.temp[message.type] = [...message.content] // clone array
-}
-/*
-if (incoming[message.type].description.search(/\?/) == -1) {
-	console.log(incoming[message.type].description, message.type + "|" + message.content.join(" "))
-}
-*/
-// end of delete everything between comments
-
-
+		// For testing purposes
+		displayMessages(message.type,message.content)
 		
 		// Translate message
 		if (message.type == "10 bf 06" && spa.outbox.length > 0) { // "Ready for command" (I think??) and messages ready to be sent
@@ -405,10 +369,45 @@ function sendCommand(request,param,callBackError) {
 }
 
 
+function displayMessages(type,content) {
+	let output="";
+
+	if (spa.temp[type] == undefined) {
+		spa.temp[type] = []
+	}
+	if (spa.temp[type].join(" ") != content.join(" ")) {  // let's store current status update and see what's changed with the last one
+		for (let i=0; i<content.length;i++) {
+			if (spa.temp[type][i] != content[i]) {
+				output += "\033[93m" // splash of yellow color
+			} else {
+				output += "\033[37m" // normal white
+			}
+			output += content[i] + " "
+		}
+		output += "\033[37m"; // in case last hex is yellow
+
+		if (incoming[type] != undefined) {
+			console.log("type: ",type," (",incoming[type].description,")")
+		} else {
+			console.log("type: ",type)
+		}
+		
+		console.log("old: ",spa.temp[type].join(" "))
+		console.log("new: ",output)
+		if (incoming[type] != undefined) {
+			console.log("code:",incoming[type].codeLine.join(" "))
+		}
+
+		spa.temp[type] = [...content]; // clone array
+	}
+}
+
+
 // Converts a decimal into a hexadecimal
 function decHex(number) {
 	return parseInt(number,10).toString(16).padStart(2,"0")
 }
+
 
 // Get message ready for sending and add it to outbox queue
 function prepareMessage(data) {
