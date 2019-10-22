@@ -75,7 +75,7 @@ let spa = {
 	outbox : [] // Messages waiting to be sent to spa
 };
 
-spa.temp=[]; // delete this line!!!!!!!!!!!
+spa.testing=[]; // Only used for testing (displaying changes in configs)
 
 // Set up message translation matrix (codes must be unique as they are used to store data in spa{})
 let incoming = { // Status update
@@ -371,20 +371,26 @@ function sendCommand(request,param,callBackError) {
 
 function displayMessages(type,content) {
 	let output="";
-
-	if (spa.temp[type] == undefined) {
-		spa.temp[type] = []
+	if (spa.testing[type] == undefined) {
+		spa.testing[type] = []
 	}
-	if (spa.temp[type].join(" ") != content.join(" ")) {  // let's store current status update and see what's changed with the last one
+
+	// Don't want to see status update because only time changed
+	let check1 = spa.testing[type].join(" ");
+	let check2 = content.join(" ");
+	if (type == "ff af 13"  ) {
+		// Cut out the hours and minutes
+		check1 = check1.slice(0,9) + check1.slice(15);
+		check2 = check2.slice(0,9) + check2.slice(15);
+	}
+
+	if (check1 != check2) {  // Let's see what's changed with the last update
 		for (let i=0; i<content.length;i++) {
-			if (spa.temp[type][i] != content[i]) {
+			if (spa.testing[type][i] != content[i]) {
 				output += "\033[93m" // splash of yellow color
-			} else {
-				output += "\033[37m" // normal white
 			}
-			output += content[i] + " "
-		}
-		output += "\033[37m"; // in case last hex is yellow
+			output += content[i] + "\033[37m " // Normal white with a space
+		}		
 
 		if (incoming[type] != undefined) {
 			console.log("type: ",type," (",incoming[type].description,")")
@@ -392,13 +398,13 @@ function displayMessages(type,content) {
 			console.log("type: ",type)
 		}
 		
-		console.log("old: ",spa.temp[type].join(" "))
+		console.log("old: ",spa.testing[type].join(" "))
 		console.log("new: ",output)
 		if (incoming[type] != undefined) {
 			console.log("code:",incoming[type].codeLine.join(" "))
 		}
 
-		spa.temp[type] = [...content]; // clone array
+		spa.testing[type] = [...content]; // clone array
 	}
 }
 
