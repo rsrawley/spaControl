@@ -1,6 +1,6 @@
 /* Use
 
- node spa.js 2>&1 | tee test1
+node spa.js 2>&1 | tee test1 &
 
 in order to see output on terminal and save it to file
 */
@@ -82,22 +82,24 @@ let incoming = { // Status update
 	"ff af 13" : { 
 		"description" : "Status udpate",
 						    //17 00 62 15 0a 00 00 00 00 08 0c 00 00 02 00 00 00 00 00 04 60 00 00 00 1e 00 00
-		"codeLine" : "00 PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CC ST 00 00 00 H2 00 00".split(" "),
+		"codeLine" : "GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CC ST TF 00 00 H2 00 00".split(" "),
 		"codes" : {
+			"GF" : "General flag (05 = on hold)",
 			"PF" : "Priming flag (0x01 = Priming)",
 			"CT" : "Current temperature (in F) -- 00 means no temp reading", // verified
 			"HH" : "Hours", // verified
 			"MM" : "Minutes", // verified
 			"HM" : "Heating mode (0x00 = Ready, 0x01 = Rest, 0x03?? = Ready in rest))", // verified for 0 and 1
-			"TA" : "Temp sensor A (inlet) goes to 3c if on hold???", // verified
+			"TA" : "Temp sensor A (inlet) (goes to 3c if on hold -- 3c is not reliable)", // verified
 			"TB" : "Temp sensor B (outlet)", // verified
 			"FC" : "Filter cycle (04 = cycle 1, 08 = cycle 2, ?? = both??)", // verified
-			"HF" : "Heat flag (0x0c = not heating, 0x2c = preparing to heat, 0x1c = Heating, 0x08 = temp range low, 0x04 = on hold))", // verified
+			"HF" : "Heat flag (0x0c = not heating, 0x2c = waiting, 0x1c = heating, 0x08 = temp range low, 0x04 = on hold))", // verified
 			"PP" : "Pump status (0x02 for pump 1, 0x08 for pump 2, 0x0a for both -- added together)", // verified
 			"CP" : "Circ pump (0x00 = off, 0x02 = on)", // verified
 			"LF" : "Light flag (0x03 for on)", // verified
 			"CF" : "Cleanup cycle flag (0x04 off, 0x0c for on)",
 			"ST" : "Set temperature", // verified
+			"TF" : "Temperature A/B flag (0 = off, 1  = on)",
 			"H2" : "Heat mode 2nd flag (0x00 = when HM is 01, 0x1e = when HM is 00)"
 		}
 	},
@@ -126,16 +128,7 @@ let incoming = { // Status update
 		}
 	},
 
-	"10 bf 26" : { // Control configuration 1
-		"description" : "Control configuration 1",
-						 	 // 00 87 00 00 00 01 00 00 01 00 00 00 00 00 00 00 00 00
-		"codeLine" : "".split(" "),
-		"codes" : {
-			"A" : ""
-		}
-	},
-
-	"ff af 26" : { // Control configuration
+	"ff af 26" : { // Control configuration 1
 		"description" : "Control configuration",
 						 	 // 00 87 00 01 00 01 00 00 01 00 00 00 00 00 00 00 00 00
 		"codeLine" : "00 00 RM TS TF CC 00 00 M8".split(" "),
@@ -148,11 +141,30 @@ let incoming = { // Status update
 		}
 	},
 
-	"0a bf 24" : { // Control configuration 2 ***seems same as ff af 26***!!!!!!!
+	"10 bf 24" : { // Control configuration 2 ***seems same as ff af 26***!!!!!!!
 		"description" : "Control configuration 2",
 						 	 // 64 c9 2c 00 4d 42 50 35 30 31 55 58 03 a8 2f 63 83 01 06 05 00
-		"codeLine" : "".split(" "),
+		"codeLine" : "00 00 00 00 M1 M2 M3 M4 M5 M6 M7 M8 00 00 00 00 00 00 00 00 00".split(" "),
 		"codes" : {
+			"M1 to M8" : "Motherboard model in ASCII"
+		}
+	},
+
+	"10 bf 28" : { // Faults log
+		"description" : "Faults log",
+						 	 // 0c 0a 10 55 17 21 10 64 60 66 
+		"codeLine" : "TO EN EC ND FH FM FE FS FA FB".split(" "),
+		"codes" : {
+			"TO" : "Total number of entries", // verified
+			"EN" : "Entry number (add one to hex number)", // verified
+			"EC" : "Error code (see Spa Touch manual for list)", // verified
+			"ND" : "Number of days ago", // verified
+			"FH" : "Time (hour) of fault", // verified
+			"FM" : "Time (minute) of fault", // verified
+			"FE" : "Heat mode (01 = ready)", // verified
+			"FS" : "Set temp", // verified
+			"FA" : "Temp A", // verified
+			"FB" : "Temp B" // verified
 		}
 	},
 
@@ -279,7 +291,7 @@ function sendCommand(request,param,callBackError) {
 	} else if (request == "toggleItem") { // verified
   	type[0] = "10 bf 11";
 		
-		let allowed = {"pump1" : "04", "pump2" : "05", "light" : "11", "heatMode" : "51", "tempRange" : "50"};
+		let allowed = {"pump1" : "04", "pump2" : "05", "light" : "11", "heatMode" : "51", "tempRange" : "50", "hold" : "3c"};
 		if (param in allowed) {
 			content[0] = allowed[param] + "00";
 		} else {
@@ -308,7 +320,27 @@ function sendCommand(request,param,callBackError) {
 	} else if (request == "filterConfigRequest") { // verified
   	type[0] = "10 bf 22";
 		content[0] = "01 00 00";
-		
+
+	} else if (request == "infoRequest") { // verified
+  	type[0] = "10 bf 22";
+		content[0] = "02 00 00";
+
+	} else if (request == "infoRequest2") { // verified
+  	type[0] = "10 bf 22";
+		content[0] = "04 00 00";
+
+	} else if (request == "infoRequest3") { // verified
+  	type[0] = "10 bf 22";
+		content[0] = "00 00 01";
+
+	} else if (request == "getFaults") {
+  	type[0] = "10 bf 22";
+		content[0] = "20 ff 00";
+
+  	if (param != undefined) {
+  		content[0] = "20" + decHex(param) + "00"
+  	}
+
 	} else if (request == "controlConfigRequest") {  // verified
   	type[0] = "10 bf 22";
 		content[0] = "08 00 00";
@@ -355,8 +387,10 @@ function sendCommand(request,param,callBackError) {
   	type[0] = "10 bf 27";	
 		content[0] = "00 01";
 
-	} else if (request == "") {
-  	type[0] = "";
+	} else if (request == "setABTemp") {  // verified
+  	type[0] = "10 bf e0";
+		content[0] = "03";
+
 	}
 
 	for (let i=0; i<type.length; i++) {
