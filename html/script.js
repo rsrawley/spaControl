@@ -98,6 +98,6 @@ socket.on('data',function(data) {
 
 // Send data to node server
 function sendValue(type,param) {
-	console.log(type,param)
+	//console.log(type,param)
 	socket.emit('command',{"type" : type, "param" : param});
 }

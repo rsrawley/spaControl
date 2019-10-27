@@ -13,6 +13,56 @@
 </head>
 
 <body>
+	<div class="large">
+		Status<br>
+		Time 11:22 PM<br>		
+		Spa : 96 &deg;F (heating)<br>
+		Spa in on/spa is on hold (time left: 59 min)<br>
+	</div>
+	
+	<div class="large">
+		Weather<br>
+		Outdoor : 20 &deg;C<br>
+		Forecast: cloudy<br>
+	</div>
+
+	<div>
+		Controls<br>
+		<button>Lights</button>
+		<button>Jets 1</button>
+		<button>Jets 2</button>
+		<button disabled=true>Circ</button>
+	</div>
+
+	<div class="large">
+		Settings<br>
+		Set temperature: 96 &deg;F<br>
+		Temperature scale: F<br>
+		Reminders: on/off(toggle switch)<br>
+		M8: on/off(toggle switch)<br>
+		Time format: 12h / 24h(toggle)<br>
+		Cleaning cycle: 9 increments in slide bar<br>
+		Temperature range: low/high(toggle)<br>
+		Filter cycle : 1<br>
+		Cleanup cycle: inactive<br>
+		Temp sensor A: 96 &deg;F, B: 98 &deg;F<br>
+		GFCI: passed/not passed<br>
+	</div>
+
+	<div class="large">
+		Filter cycles<br>
+		Filter 1 : 8:00 PM to 8:00 AM (duration 2:15)<br>
+		Filter 2 : 8:00 PM to 8:00 AM (duration 2:15) OR INACTIVE
+	</div>
+
+	<div class="large">
+		Logs<br>
+	</div>
+
+
+
+
+
 	<div>
 		Last error : <span id="error"></span>
 	</div>
@@ -34,9 +84,10 @@
 	</div>
 
 	<div>
-		<button onclick="sendValue('getFaults')">test1</button>
-		<button onclick="sendValue('infoRequest2',1)">test2</button>
-		<button onclick="sendValue('infoRequest3',1)">test3</button>
+		<button onclick="sendValue('test','10 bf 22 09 00 0b 00 94 00 0c 00')">test1</button>
+		<button onclick="sendValue('test','10 bf 23 09 00 0b 00 94 00 0c 00')">test2</button>
+		<button onclick="sendValue('test','10 bf 22 08 00 0c 00 94 00 0c 00')">test3</button>
+		<button onclick="sendValue('setM8','1')">test4</button>
 	</div>
 </body>
 </html>

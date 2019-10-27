@@ -5,6 +5,32 @@ node spa.js 2>&1 | tee test1 &
 in order to see output on terminal and save it to file
 */
 
+// Don't forget every number from the hot tub is in hexadecimal !!!
+
+// Set up command line access
+cmd = require('node-cmd')
+
+// Check every minute for internet connectivity
+checkConnectivity(0);
+
+function checkConnectivity(numFails) {
+	cmd.get('ping -c 5 8.8.8.8',
+		function(err, data, stderr){
+			if (err) {
+				numFails++;
+
+				if (numFails == 5) {
+					cmd.run('sudo ifdown wlan0 && sudo ifup wlan0')
+				} else if (numFails == 10) {
+					cmd.run('sudo reboot')
+				}
+			} else {
+				numFails = 0
+			}
+			setTimeout(function(){checkConnectivity(numFails)},60000) // Every minute
+    }
+	)
+}
 
 // Set up GPIO access
 let gpio = require('onoff').Gpio;
@@ -51,28 +77,30 @@ function checkError(error) {
 
 
 // Every minute, check the time is right and adjust (if spa turned off, or daylight saving change)
-setInterval(function () {
+setInterval(function () {setTime()},60000)
+
+function setTime() {
 	if (spa.HH != undefined) { // Make sure we already have a connection
 		// It's easier to use JS date objects to handle checking before and after midnight
 		let currentDate = new Date();
 		let hours = currentDate.getHours();
 		let minutes = currentDate.getMinutes();
 		
-		let spaTime = new Date(2019,10,19,spa.HH,spa.MM); // October 19, 2019 is an arbitrary date (I happened to work on this function that day)
+		let spaTime = new Date(2019,10,19,parseInt(spa.HH,16),parseInt(spa.MM,16)); // October 19, 2019 is an arbitrary date (I happened to work on this function that day)
 
 		// As long as spa time is within +/- 1 min of actual time, we're not modifying it
 		let lowerLimit = new Date(2019,10,19,hours,minutes - 1);
 		let upperLimit = new Date(2019,10,19,hours,minutes + 1);
 		if (!(spaTime.getTime() >= lowerLimit.getTime() && spaTime.getTime() <= upperLimit.getTime())) { // If not in right time, change it
 			sendCommand("setTime",[hours,minutes],checkError);
+//			console.log(lowerLimit,spaTime,upperLimit,spa.HH,spa.MM)
 		}
 	}
-},60000)
-
+}
 
 // Store all items in memory
 let spa = {
-	outbox : [] // Messages waiting to be sent to spa
+	outbox : [], // Messages waiting to be sent to spa
 };
 
 spa.testing=[]; // Only used for testing (displaying changes in configs)
@@ -85,34 +113,25 @@ let incoming = { // Status update
 		"codeLine" : "GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CC ST TF 00 00 H2 00 00".split(" "),
 		"codes" : {
 			"GF" : "General flag (05 = on hold)",
-			"PF" : "Priming flag (0x01 = Priming)",
+			"PF" : "Priming flag (on start, goes through different stages: 04,42,05,01,00 ---0x01 = Priming)",
 			"CT" : "Current temperature (in F) -- 00 means no temp reading", // verified
 			"HH" : "Hours", // verified
 			"MM" : "Minutes", // verified
 			"HM" : "Heating mode (0x00 = Ready, 0x01 = Rest, 0x03?? = Ready in rest))", // verified for 0 and 1
-			"TA" : "Temp sensor A (inlet) (goes to 3c if on hold -- 3c is not reliable)", // verified
+			"TA" : "Temp sensor A (inlet) (show hold remaining time if on hold : goes to 3c (60 min) first, then drops by 1 every minute)", // verified
 			"TB" : "Temp sensor B (outlet)", // verified
-			"FC" : "Filter cycle (04 = cycle 1, 08 = cycle 2, ?? = both??)", // verified
-			"HF" : "Heat flag (0x0c = not heating, 0x2c = waiting, 0x1c = heating, 0x08 = temp range low, 0x04 = on hold))", // verified
+			"FC" : "Filter cycle (04 = cycle 1, 08 = cycle 2, ?? = both?? FC goes to 00 briefly when switching?)", // verified
+			"HF" : "Heat flag (0x04 = on hold in temp range high, 0x0c = not heating (high), 0x2c = waiting (high), 0x1c = heating (high), 0x00 = on hold (low), 0x08 = not heating(low))", // verified
 			"PP" : "Pump status (0x02 for pump 1, 0x08 for pump 2, 0x0a for both -- added together)", // verified
 			"CP" : "Circ pump (0x00 = off, 0x02 = on)", // verified
 			"LF" : "Light flag (0x03 for on)", // verified
 			"CF" : "Cleanup cycle flag (0x04 off, 0x0c for on)",
 			"ST" : "Set temperature", // verified
 			"TF" : "Temperature A/B flag (0 = off, 1  = on)",
-			"H2" : "Heat mode 2nd flag (0x00 = when HM is 01, 0x1e = when HM is 00)"
+			"H2" : "Heat mode 2nd flag (0x00 = when HM is 01, 0x1e = when HM is 00, also goes to 00 if M8 set to off and goes back to 1e if M8 set to on)"
 		}
 	},
 	
-// heating mode: 28 at first, then 44
-/*
-08 10 bf 22 02 00 00 0a
-1a 10 bf 24 64 c9 2c 00 4d 42 50 35 30 31 55 58 03 a8 2f 63 83 01 06 05 00 46
-08 10 bf 22 08 00 00 8d
-17 10 bf 26 00 87 00 00 00 01 00 00 01 00 00 00 00 00 00 00 00 00 6b
-06 10 bf e0 03 0d
-*/
-
 	"10 bf 23" : { // Filter configuration
 		"description" : "Filter configuration",
 		"codeLine" : "1H 1M 1D 1E 2H 2M 2D 2E".split(" "),
@@ -128,10 +147,27 @@ let incoming = { // Status update
 		}
 	},
 
-	"ff af 26" : { // Control configuration 1
-		"description" : "Control configuration",
+	"10 bf 24" : { // Control configuration 1 ***seems same as ff af 26***!!!!!!!
+		"description" : "Control configuration 1",
+						 	 // 64 c9 2c 00 4d 42 50 35 30 31 55 58 03 a8 2f 63 83 01 06 05 00
+		"codeLine" : "00 00 00 00 M1 M2 M3 M4 M5 M6 M7 M8 00 00 00 00 00 00 00 00 00".split(" "),
+		"codes" : {
+			"M1 to M8" : "Motherboard model in ASCII"
+		}
+	},
+
+	"10 bf 25" : { // Control configuration 2
+		"description" : "Control configuration 2",
+						 	 // 09 03 32 63 50 68 49 03 41 02
+		"codeLine" : "00 00 00 00 00 00 00 00 00 00".split(" "),
+		"codes" : {
+		}
+	},
+
+	"10 bf 26" : { // Control configuration 3
+		"description" : "Control configuration 3",
 						 	 // 00 87 00 01 00 01 00 00 01 00 00 00 00 00 00 00 00 00
-		"codeLine" : "00 00 RM TS TF CC 00 00 M8".split(" "),
+		"codeLine" : "00 00 RM TS TF CC 00 00 M8 00 00 00 00 00 00 00 00 00".split(" "),
 		"codes" : {
 			"RM" : "Reminders (0 = on, 1 = off)",
 			"TS" : "Temperature scale (0 = Fahrenheit, 1 = Celsius)",
@@ -141,13 +177,9 @@ let incoming = { // Status update
 		}
 	},
 
-	"10 bf 24" : { // Control configuration 2 ***seems same as ff af 26***!!!!!!!
-		"description" : "Control configuration 2",
-						 	 // 64 c9 2c 00 4d 42 50 35 30 31 55 58 03 a8 2f 63 83 01 06 05 00
-		"codeLine" : "00 00 00 00 M1 M2 M3 M4 M5 M6 M7 M8 00 00 00 00 00 00 00 00 00".split(" "),
-		"codes" : {
-			"M1 to M8" : "Motherboard model in ASCII"
-		}
+	"10 bf 2e" : { // Control configuration 4
+		"description" : "Control configuration 4",
+						 	 // 05 00 01 90 00 00
 	},
 
 	"10 bf 28" : { // Faults log
@@ -168,31 +200,26 @@ let incoming = { // Status update
 		}
 	},
 
-	"0a bf 25" : { // Control configuration 2
-		"description" : "Control configuration 2",
-						 	 // 09 03 32 63 50 68 49 03 41 02
-		"codeLine" : "".split(" "),
+	"10 bf 2b" : { // GFCI test result
+		"description" : "GFCI test result",
+						 	 // 01 
+		"codeLine" : "GF".split(" "),
 		"codes" : {
+			"GF" : "GFCI test result (0 = not passed, 1 = passed)", // verified
 		}
-	},
-
-	"10 bf 06" : {
-		"description" : "Ready for command???" // Not confirmed
-	},
-	"10 bf 07" : {
-		"description" : "No command to send???" // Not confirmed
-	},
-	"0a bf 94" : { // Control configuration?? Not confirmed
-		"description" : ""
-	},
-	"0a bf 2e" : { // Control configuration 2?? Not confirmed
-		"description" : ""
-	},
-	"fe bf 00" : { // no idea, emitted every 1 second roughly
-		"description" : "?"
 	}
 }
 
+// Some response codes have multiple aliases
+incoming["ff af 26"] = incoming["10 bf 26"];
+
+// Responses to ignore
+let ignore = [
+	"10 bf 06", // Ready to send command?
+	"10 bf 07", // Nothing to send response from panel?
+	"fe bf 00", // No idea, emitted every 1 second roughly
+	"ff af 13" // Regular status updates (will be caught by functions, doesn't count as "response confirmation" from motherboard)
+];
 
 // Set up serial port
 const SerialPort = require('serialport');
@@ -200,27 +227,10 @@ const Delimiter = require('@serialport/parser-delimiter');
 const port = new SerialPort('/dev/ttyAMA0', {
   baudRate: 115200
 });
-const parser = port.pipe(new Delimiter({ delimiter: Buffer.from('7e', 'hex') }));
+const parser = port.pipe(new Delimiter({delimiter: Buffer.from('7e', 'hex') }));
+parser.on('data', readData);
 
-
-
-
-/*
-// delete all these lines below!!!!!
-
-
-port.on('data', function (data) {
-  console.log('Data:', data)
-})
-
-let parser ={on:function(){}}// delete this!!!!!!!!!!!!!!!!!
-*/
-
-
-
-
-
-parser.on('data', function(data) {
+function readData(data) {
 	data = data.hexSlice(); // Convert to hexadecimal string
 
 	// Extract message length (first byte) and message type (next 3 bytes)
@@ -237,9 +247,6 @@ parser.on('data', function(data) {
 		message.content = []
 	}
 
-//console.log(message.hex)
-	
-	
 	if (data.length == message.length*2 && checksum(data.substring(0,data.length-2)) == message.checksum) { // Check proper message length and checksum
 		
 		// Insert spaces every two characters to match "human readable" object type defined at top of program
@@ -247,14 +254,40 @@ parser.on('data', function(data) {
 
 		// For testing purposes
 		displayMessages(message.type,message.content)
-		
+
+		// Has a message already been sent to motherboard ?
+		// Verify that response is not in ignore list and is not the regular status update -- any other response will be deemed as confirmation of command received
+		if (spa.readyToSend == "waiting on response"  && ignore.indexOf(message.type) == -1) {
+			spa.readyToSend = "waiting on ready command";
+			spa.waitingResponseTries = 0;
+//console.log("response confirmation received")
+		}
+
 		// Translate message
 		if (message.type == "10 bf 06" && spa.outbox.length > 0) { // "Ready for command" (I think??) and messages ready to be sent
+//console.log(spa.readyToSend, spa.waitingResponseTries)
 
-			spa.outbox[0]() // Execute first message function in the queue (and probably the only one)
-			spa.outbox.shift(); // Remove message function
+// spa.waitingResponseTries is used both to wait for ready command a few times AND for the response confirmation
+			if ((spa.readyToSend == "waiting on ready command" && spa.waitingResponseTries == 0) || spa.waitingResponseTries == 30) { // Ready command received or no confirmation received, so giving up
+//console.log("executing message function")
+				spa.outbox[0](); // Execute first message function in the queue (and probably the only one)
+				spa.outbox.shift(); // Remove message function from queue
+				spa.readyToSend = "waiting on response";
+				spa.waitingResponseTries = 0;
 
-		} else if (message.type in incoming) {
+// I think the console.log() is significantly slowing down the timing and causing some message not to be sent at the right time...
+			} else if (spa.readyToSend == "waiting on ready command") { // Wait for a few  "Ready command" before sending next message
+				spa.waitingResponseTries++;
+
+			} else if (spa.readyToSend == "waiting on response") {
+				spa.waitingResponseTries += 1;
+
+			} else { // control variables have not been initialized yet
+				spa.readyToSend = "waiting on ready command"
+				spa.waitingResponseTries = 0;
+			}
+
+		} else if ((message.type in incoming && ignore.indexOf(message.type) == -1) || message.type == "ff af 13")  { // I have a definition for this message type and it is not in the ignore list or it's the regular status update
 			
 			let codeLine = incoming[message.type].codeLine; // Order of codes
 			let codes = incoming[message.type].codes; // Translation of codes
@@ -268,143 +301,138 @@ parser.on('data', function(data) {
 					}
 				}
 			}
-			
-		} else {
-			
-			// All other messages not yet catalogued
-			if (!(message.type in incoming)) {
-				//console.log(message.hex);
-			}
 		}
 	}
-})
+}
 
 
 function sendCommand(request,param,callBackError) {
   // Some messages need config requests to be sent first
-  let type = [];
-  let content = [];
+  let type;
+  let content = "";
   
-	if (request == "configRequest") { // not checked yet !!!!!
-  	type[0] = "10 bf 04";
-		
-	} else if (request == "toggleItem") { // verified
-  	type[0] = "10 bf 11";
+	if (request == "toggleItem") { // verified
+  	type = "10 bf 11";
 		
 		let allowed = {"pump1" : "04", "pump2" : "05", "light" : "11", "heatMode" : "51", "tempRange" : "50", "hold" : "3c"};
 		if (param in allowed) {
-			content[0] = allowed[param] + "00";
+			content = allowed[param] + "00";
 		} else {
 			callBackError("Error in " + request);
 		}
 		
 	} else if (request == "setTemp") { // verified
-  	type[0] = "10 bf 20";
+  	type = "10 bf 20";
 //range is 80-104 for F, 26-40 for C in high range
 //range is 50-80 for F, 10-26 for C in low range		
 		if (param >= 80 && param <= 104) {
-			content[0] = decHex(param);
+			content = decHex(param);
 		} else {
 			callBackError("Error in " + request);
 		}
 			
 	} else if (request == "setTime") {  // Expects param to be in [HH,MM] format // verified
-  	type[0] = "10 bf 21";
+  	type = "10 bf 21";
 				
 		if (param[0] >=0 && param[0] <=23 && param[1] >=0 && param[1] <= 59) { // Check hours and minutes within proper range
-			content[0] = decHex(param[0]) + decHex(param[1]);
+			content = decHex(param[0]) + decHex(param[1]);
 		} else {
 			callBackError("Error in " + request);
 		}
 
 	} else if (request == "filterConfigRequest") { // verified
-  	type[0] = "10 bf 22";
-		content[0] = "01 00 00";
+  	type = "10 bf 22";
+		content = "01 00 00";
 
-	} else if (request == "infoRequest") { // verified
-  	type[0] = "10 bf 22";
-		content[0] = "02 00 00";
+	} else if (request == "controlConfigRequest1") { // verified
+  	type = "10 bf 22";
+		content = "02 00 00";
 
-	} else if (request == "infoRequest2") { // verified
-  	type[0] = "10 bf 22";
-		content[0] = "04 00 00";
+	} else if (request == "controlConfigRequest2") { // verified -- unknown what response means
+  	type = "10 bf 22";
+		content = "04 00 00";
 
-	} else if (request == "infoRequest3") { // verified
-  	type[0] = "10 bf 22";
-		content[0] = "00 00 01";
+	} else if (request == "controlConfigRequest3") {  // verified
+  	type = "10 bf 22";
+		content = "08 00 00";
+
+	} else if (request == "controlConfigRequest4") { // verified  -- unknown what response means
+  	type = "10 bf 22";
+		content = "00 00 01";
 
 	} else if (request == "getFaults") {
-  	type[0] = "10 bf 22";
-		content[0] = "20 ff 00";
+  	type = "10 bf 22";
+		content = "20 ff 00";
 
   	if (param != undefined) {
-  		content[0] = "20" + decHex(param) + "00"
+  		content = "20" + decHex(param) + "00"
   	}
+	
+	} else if (request == "getGfciTest") {  // verified
+  	type = "10 bf 22";
+		content = "80 00 00";
 
-	} else if (request == "controlConfigRequest") {  // verified
-  	type[0] = "10 bf 22";
-		content[0] = "08 00 00";
+	} else if (request == "setFilterTime") {  // verified
+  	//type = "10 bf 23";
+		//content = "80 00 00";
 
-	} else if (request == "setM8") {  // *** this is not working reliably ***
-  	type[0] = "10 bf 22"; // Send config request
-  	content[0] = "08 00 00";
-
-  	type[1] = "10 bf 22";				
-		if (param == 0 || param == 1) {
-			content[1] = "06" + decHex(param);
+	} else if (request == "setReminders") { // verified
+  	type = "10 bf 27";	
+		if (param == 0 || param == 1) { // 0 : on, 1 : off
+			content = "00" + decHex(param);
 		} else {
 			callBackError("Error in " + request);
 		}
 
 	} else if (request == "setTempScale") { // verified
-  	type[0] = "10 bf 27";
+  	type = "10 bf 27";
 		
 		if (param == 0 || param == 1) { // 0 : Fahrenheit, 1 : Celsius
-			content[0] = "01" + decHex(param);
+			content = "01" + decHex(param);
 		} else {
 			callBackError("Error in " + request);
 		}
 
 	} else if (request == "setTimeFormat") { // verified
-  	type[0] = "10 bf 27";
+  	type = "10 bf 27";
 				
 		if (param == 0 || param == 1) {
-			content[0] = "02" + decHex(param);
+			content = "02" + decHex(param);
 		} else {
 			callBackError("Error in " + request);
 		}
 
 	} else if (request == "setCleanCycle") { // verified
-  	type[0] = "10 bf 27";
+  	type = "10 bf 27";
 				
 		if (param >= 0 && param <= 8) { // Each integer represents 30 min increments
-			content[0] = "03" + decHex(param);
+			content = "03" + decHex(param);
 		} else {
 			callBackError("Error in " + request);
 		}
 
-	} else if (request == "setReminders") { // does not work reliably!!!
-  	type[0] = "10 bf 27";	
-		content[0] = "00 01";
+	} else if (request == "setM8") {  // verified
+  	type = "10 bf 27";
+		if (param == 0 || param == 1) {
+			content = "06" + decHex(param);
+		} else {
+			callBackError("Error in " + request);
+		}
 
 	} else if (request == "setABTemp") {  // verified
-  	type[0] = "10 bf e0";
-		content[0] = "03";
+  	type = "10 bf e0";
+		content = "03";
 
+	} else if (request == "test") {  // verified
+		type = param;
 	}
 
-	for (let i=0; i<type.length; i++) {
-		if (content[i] == undefined) {
-			content[i] = "";
-		}
-		let message = type[i] + content[i];
-		prepareMessage(message);
-	}
+	prepareMessage(type + content);
 }
 
 
 function displayMessages(type,content) {
-	let output="";
+	let output = "";
 	if (spa.testing[type] == undefined) {
 		spa.testing[type] = []
 	}
@@ -418,12 +446,18 @@ function displayMessages(type,content) {
 		check2 = check2.slice(0,9) + check2.slice(15);
 	}
 
-	if (check1 != check2) {  // Let's see what's changed with the last update
+	//let ignore = [];
+
+	if (check1 != check2 || ignore.indexOf(type) == -1) {  // Let's see what's changed with the last update
+		let output = [];
+
 		for (let i=0; i<content.length;i++) {
+
 			if (spa.testing[type][i] != content[i]) {
-				output += "\033[93m" // splash of yellow color
+				output.push("\033[93m" + content[i] + "\033[37m") // splash of yellow color
+			} else {
+				output.push(content[i])
 			}
-			output += content[i] + "\033[37m " // Normal white with a space
 		}		
 
 		if (incoming[type] != undefined) {
@@ -432,9 +466,11 @@ function displayMessages(type,content) {
 			console.log("type: ",type)
 		}
 		
-		console.log("old: ",spa.testing[type].join(" "))
-		console.log("new: ",output)
-		if (incoming[type] != undefined) {
+		if (spa.testing[type].length > 0 || output.length > 0) {
+			console.log("old: ",spa.testing[type].join(" "));
+			console.log("new: ",output.join(" "));
+		}
+		if (incoming[type] != undefined && incoming[type].codeLine != undefined) {
 			console.log("code:",incoming[type].codeLine.join(" "))
 		}
 
@@ -472,18 +508,20 @@ function prepareMessage(data) {
 	}
 
 	// Add to message ready to send queue (the message is a whole function)
-	spa.outbox.push(getTransmissionFunc(asciiString));
+	spa.outbox.push(getTransmissionFunc(asciiString,data));
 }
 
 
 // Returns a function that needs to be executed when sending message
-function getTransmissionFunc(asciiString) { 
+function getTransmissionFunc(asciiString,hexString) { 
 	return 	function() {
 		RE_DE.write(1, function() { // Switch RS485 module to transmit
 			port.write(asciiString, 'ascii', function(err) {
 			  if (err) {
 			    return console.log('Error on write: ', err.message)
 			  }
+
+				console.log("Sending: " + hexString);
 
 			  // Switch RS485 module back to receive
 			  RE_DE.write(0);
@@ -528,3 +566,11 @@ function checksum(hexstring) {
 }
 
 console.log("ready");
+// Get some data for various settings (I still don't know what some of the responses mean...)
+setTimeout(function() {
+	sendCommand("filterConfigRequest","",checkError);
+	sendCommand("controlConfigRequest1","",checkError);
+	sendCommand("controlConfigRequest2","",checkError);
+	sendCommand("controlConfigRequest3","",checkError);
+	sendCommand("controlConfigRequest4","",checkError);
+}, 2000);
