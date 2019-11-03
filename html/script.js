@@ -1,3 +1,70 @@
+// Reference for radio toggle CSS : https://codepen.io/JiveDig/pen/jbdJXR/
+/*		Temperature scale: <span id="tempScale"></span><br>
+		Reminders: on/off(toggle switch)<br>
+		M8: on/off(toggle switch)<br>
+		Time format: 12h / 24h(toggle)<br>
+		Temperature range: low/high(toggle)<br>
+*/
+// Set up radio toggle buttons
+let radioToggles = {
+	"tempScale" : {
+		"display" : "Temperature scale: ",
+		"id" : ["TS_0", "TS_1"],
+		"label" : ["&deg;F","&deg;C"]
+	},
+
+	"reminders" : {
+		"display" : "Reminders: ",
+		"id" : ["RM_0", "RM_1"],
+		"label" : ["ON","OFF"]
+	},
+
+	"M8" : {
+		"display" : "M8: ",
+		"id" : ["M8_1", "M8_0"],
+		"label" : ["ON","OFF"]
+	},
+
+	"timeFormat" : {
+		"display" : "Time format: ",
+		"id" : ["TF_0", "TF_1"],
+		"label" : ["12h","24h"]
+	},
+
+	"tempRange" : {
+		"display" : "Temperature range: ",
+		"id" : ["HF_0", "HF_1"], // this is not clear if this is right code
+		"label" : ["HIGH","LOW"]
+	},
+
+	"cleaningCycle" : {
+		"display" : "Cleaning cycle: ",
+		"id" : ["CC_0","CC_1","CC_2","CC_3","CC_4","CC_5","CC_6","CC_7","CC_8",], // this is not clear if this is right code
+		"label" : ["OFF","0.5 h","1 h","1.5 h","2 h","2.5 h","3 h","3.5 h","4 h","4.5 h"]
+	}
+};
+
+for (let key in radioToggles) {
+	let div = document.createElement("div");
+	div.className = "switch-field"; // Apply CSS
+	div.innerHTML = radioToggles[key].display;
+
+	for (let i=0; i<radioToggles[key].id.length; i++) {
+		let radioToggleswitch = document.createElement("input");
+		radioToggleswitch.type = "radio";
+		radioToggleswitch.id = radioToggles[key].id[i];
+		radioToggleswitch.name = key + "_name"; // They all need the same name
+		div.appendChild(radioToggleswitch);
+
+		let label = document.createElement("label");
+		label.htmlFor = radioToggles[key].id[i];
+		label.innerHTML = radioToggles[key].label[i];
+		div.appendChild(label);
+	}
+
+	document.getElementById("settingsRadioButtons").appendChild(div);
+}
+
 // Set up parameters
 let settings = [
 	["Priming: ","PF"],
@@ -82,6 +149,10 @@ socket.on('error',function(error) {
 })
 
 
+// How to display data on the screen
+
+
+// Receive data websockets
 socket.on('data',function(data) {
 	//console.log(data);
 	if (document.getElementById(data.id)) {

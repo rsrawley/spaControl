@@ -128,7 +128,7 @@ let incoming = { // Status update
 			"CF" : "Cleanup cycle flag (0x04 off, 0x0c for on)",
 			"ST" : "Set temperature", // verified
 			"TF" : "Temperature A/B flag (0 = off, 1  = on)",
-			"H2" : "Heat mode 2nd flag (0x00 = when HM is 01, 0x1e = when HM is 00, also goes to 00 if M8 set to off and goes back to 1e if M8 set to on)"
+			"H2" : "Heat mode 2nd flag (0x00 = when HM is 01, 0x1e = when HM is 00, also goes to 00 if M8 set to off and goes back to 1e if M8 set to on)" // could be timer on m8?
 		}
 	},
 	
@@ -150,9 +150,9 @@ let incoming = { // Status update
 	"10 bf 24" : { // Control configuration 1 ***seems same as ff af 26***!!!!!!!
 		"description" : "Control configuration 1",
 						 	 // 64 c9 2c 00 4d 42 50 35 30 31 55 58 03 a8 2f 63 83 01 06 05 00
-		"codeLine" : "00 00 00 00 M1 M2 M3 M4 M5 M6 M7 M8 00 00 00 00 00 00 00 00 00".split(" "),
+		"codeLine" : "00 00 00 00 B1 B2 B3 B4 B5 B6 B7 B8 00 00 00 00 00 00 00 00 00".split(" "),
 		"codes" : {
-			"M1 to M8" : "Motherboard model in ASCII"
+			"B1 to B8" : "Motherboard model in ASCII"
 		}
 	},
 
