@@ -314,7 +314,7 @@ function sendCommand(request,param,callBackError) {
 	if (request == "toggleItem") { // verified
   	type = "10 bf 11";
 		
-		let allowed = {"pump1" : "04", "pump2" : "05", "light" : "11", "heatMode" : "51", "tempRange" : "50", "hold" : "3c"};
+		let allowed = {"pump1" : "04", "pump2" : "05", "lights" : "11", "heatMode" : "51", "tempRange" : "50", "hold" : "3c"};
 		if (param in allowed) {
 			content = allowed[param] + "00";
 		} else {

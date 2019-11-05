@@ -65,58 +65,11 @@ for (let key in radioToggles) {
 	document.getElementById("settingsRadioButtons").appendChild(div);
 }
 
-// Set up parameters
-let settings = [
-	["Priming: ","PF"],
-	["Current temperature: ","CT"],
-	["Hours: ","HH"],
-	["Minutes: ","MM"],
-	["Heating mode: ","HF"],
-	["Temp sensor A: ","TA"],
-	["Temp sensor B: ","TB"],
-	["Filter cycle: ","FC"],
-	["Pump status: ","PP"],
-	["Circulation pump: ","CP"],
-	["Lights: ","LF"],
-	["Cleanup cycle: ","CC"],
-	["Temperature scale: ","F3"],
-	["Set temperature: ","ST"],
-	["Heat mode: ","H2"],
+// Add event listeners
+document.getElementById("lights").onclick = function() {sendValue('toggleItem','lights')};
+document.getElementById("jets1").onclick = function() {sendValue('toggleItem','pump1')};
+document.getElementById("jets2").onclick = function() {sendValue('toggleItem','pump2')};
 
-	["Filter 1 start hour (always 0-24): ","1H"],
-	["Filter 1 start minute: ","1M"],
-	["Filter 1 duration hours: ","1D"],
-	["Filter 2 duration minutes: ","1E"],
-	["Filter 2 start hour: ","2H"],
-	["Filter 2 start minute: ","2M"],
-	["Filter 2 duration hours: ","2D"],
-	["Filter 2 duration minutes: ","2E"]
-];
-
-for (let i=0; i<settings.length; i++) {
-	let element = document.createElement("div");
-	element.innerHTML = settings[i][0];
-	
-	let span = document.createElement("span");
-	span.id = settings[i][1];
-	element.appendChild(span);
-	
-	document.getElementById("settings").appendChild(element);
-}
-
-
-// Add toggle buttons
-let toggles = ["pump1","pump2","light","heatMode","tempRange"];
-for (let i=0; i<toggles.length; i++) {
-	let button = document.createElement("button");
-	button.innerHTML = toggles[i];
-	
-	button.addEventListener("click", function(){
-		sendValue("toggleItem",toggles[i]);
-	});
-	
-	document.getElementById("toggles").appendChild(button);
-}
 
 // Add event listeners
 document.getElementById("setTempButton").addEventListener("click", function(){
@@ -155,14 +108,38 @@ socket.on('error',function(error) {
 // Receive data websockets
 socket.on('data',function(data) {
 	//console.log(data);
-	if (document.getElementById(data.id)) {
-		if (data.id == "2H") { // Filter start hour also has on/off info
-			// filter 2 cycle on(1) or off(0)
-			let filter2 = Math.floor(parseInt(data.value,16)/128) // this is not displayed right now
-			data.value = (parseInt(data.value,16) % 128).toString(16) // mod 128 to take out high bit
+	data.value = data.value.toString().padStart(2,"0"); // Put zeroes in front so it looks like hex (easier for me to spot in if statements)
+
+	if (data.id == "HF") { // Heat flag
+		let heat = {"04" : "On hold", "0c" : "Not heating", "2c" : "Waiting", "1c" : "Heating", // High range
+								"00" : "On hold", "08" : "Not heating", "??" : "Waiting", "??" : "Heating"}; // Low range
+		if (data.value in heat) {
+			data.value = heat[data.value]
 		}
 
-		document.getElementById(data.id).innerHTML = parseInt(data.value,16) + " (0x" + data.value + ")";
+	} else if (data.id == "LF") { // Lights
+		document.getElementById("lights").style.backgroundColor = {"00" : "red", "03" : "limegreen"}[data.value];
+
+	} else if (data.id == "PP") { // Jets
+		let colors = ["red", "limegreen"];
+		document.getElementById("jets1").style.backgroundColor = colors[{"00" : [0,0], "02" : [1,0], "08" : [0,1], "0a" : [1,1]}[data.value][0]];
+		document.getElementById("jets2").style.backgroundColor = colors[{"00" : [0,0], "02" : [1,0], "08" : [0,1], "0a" : [1,1]}[data.value][1]];
+
+	} else if (data.id == "CP") { // Circ
+		document.getElementById("circ").style.backgroundColor = {"00" : "red", "02" : "limegreen"}[data.value];
+
+	} else if (data.id == "2H") { // Filter start hour also has on/off info
+		// filter 2 cycle on(1) or off(0)
+		let filter2 = Math.floor(parseInt(data.value,16)/128) // this is not displayed right now
+		data.value = (parseInt(data.value,16) % 128).toString(16) // mod 128 to take out high bit
+	}
+
+	if (document.getElementById(data.id)) { // id exists ?
+		if (["CT","HH","MM","ST"].includes(data.id)) {
+			document.getElementById(data.id).innerHTML = parseInt(data.value,16); // Change hex to decimal
+		} else if (["HF"].includes(data.id)) {
+			document.getElementById(data.id).innerHTML = data.value;
+		}
 	}
 })
 
