@@ -6,5 +6,4 @@ sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-ports 9000
 
 # Start app
 cd /home/pi/spaControl
-#/usr/bin/node spa.js &
-
+/usr/bin/node spa.js >/dev/null 2>log& # optionally : >log

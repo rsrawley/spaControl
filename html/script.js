@@ -79,16 +79,15 @@ document.getElementById("setTempButton").addEventListener("click", function(){
 
 // Special buttons
 function letsgo() {
-	if (parseInt(document.getElementById("LF").innerHTML,10) != 3) { // Lights not on?
-		sendValue("toggleItem","light");
+	if (document.getElementById("lights").style.backgroundColor != "limegreen") { // Lights not on?
+		sendValue("toggleItem","lights");
 	}
 	sendValue("setTemp","100");
 }
 
 function alldone() {
-	console.log(document.getElementById("LF").innerHTML,typeof(document.getElementById("LF").innerHTML),document.getElementById("LF").innerHTML == 3)
-	if (parseInt(document.getElementById("LF").innerHTML,10) == 3) { // Lights on?
-		sendValue("toggleItem","light");
+	if (document.getElementById("lights").style.backgroundColor == "limegreen") { // Lights on?
+		sendValue("toggleItem","lights");
 	}
 	sendValue("setTemp","96");
 }
