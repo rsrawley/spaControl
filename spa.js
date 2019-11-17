@@ -72,7 +72,8 @@ io.on('connection', function(socket){
 
 // Sends message back if an error in sending command
 function checkError(error) {
-	io.emit('error',error)
+	io.emit('error',error);
+	console.log(error);
 }
 
 
@@ -110,7 +111,7 @@ let incoming = { // Status update
 	"ff af 13" : { 
 		"description" : "Status udpate",
 						    //17 00 62 15 0a 00 00 00 00 08 0c 00 00 02 00 00 00 00 00 04 60 00 00 00 1e 00 00
-		"codeLine" : "GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CC ST TF 00 00 H2 00 00".split(" "),
+		"codeLine" : "GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CC ST TC 00 00 H2 00 00".split(" "),
 		"codes" : {
 			"GF" : "General flag (05 = on hold)",
 			"PF" : "Priming flag (on start, goes through different stages: 04,42,05,01,00 ---0x01 = Priming)",
@@ -120,14 +121,14 @@ let incoming = { // Status update
 			"HM" : "Heating mode (0x00 = Ready, 0x01 = Rest, 0x03?? = Ready in rest))", // verified for 0 and 1
 			"TA" : "Temp sensor A (inlet) (show hold remaining time if on hold : goes to 3c (60 min) first, then drops by 1 every minute)", // verified
 			"TB" : "Temp sensor B (outlet)", // verified
-			"FC" : "Filter cycle (04 = cycle 1, 08 = cycle 2, ?? = both?? FC goes to 00 briefly when switching?)", // verified
-			"HF" : "Heat flag (0x04 = on hold in temp range high, 0x0c = not heating (high), 0x2c = waiting (high), 0x1c = heating (high), 0x00 = on hold (low), 0x08 = not heating(low))", // verified
+			"FC" : "Filter cycle (04(low)/06(high) = cycle 1, 08(high) = cycle 2, ?? = both?? FC goes to 00 briefly when switching?)", // verified
+			"HF" : "Heat flag (0x04 = on hold in temp range high, 0x0c = not heating (high), 0x2c = waiting (high), 0x1c = heating (high), subtract 4 from all values for low range)", // verified
 			"PP" : "Pump status (0x02 for pump 1, 0x08 for pump 2, 0x0a for both -- added together)", // verified
 			"CP" : "Circ pump (0x00 = off, 0x02 = on)", // verified
 			"LF" : "Light flag (0x03 for on)", // verified
 			"CF" : "Cleanup cycle flag (0x04 off, 0x0c for on)",
 			"ST" : "Set temperature", // verified
-			"TF" : "Temperature A/B flag (0 = off, 1  = on)",
+			"TC" : "Temperature A/B flag (0x00 = off, 0x01  = on)",
 			"H2" : "Heat mode 2nd flag (0x00 = when HM is 01, 0x1e = when HM is 00, also goes to 00 if M8 set to off and goes back to 1e if M8 set to on)" // could be timer on m8?
 		}
 	},
@@ -318,17 +319,17 @@ function sendCommand(request,param,callBackError) {
 		if (param in allowed) {
 			content = allowed[param] + "00";
 		} else {
-			callBackError("Error in " + request);
+			return callBackError("Error in " + request);
 		}
 		
 	} else if (request == "setTemp") { // verified
   	type = "10 bf 20";
 //range is 80-104 for F, 26-40 for C in high range
 //range is 50-80 for F, 10-26 for C in low range		
-		if (param >= 80 && param <= 104) {
+		if (param >= 50 && param <= 104) { // how to know if in low/high range???
 			content = decHex(param);
 		} else {
-			callBackError("Error in " + request);
+			return callBackError("Error in " + request);
 		}
 			
 	} else if (request == "setTime") {  // Expects param to be in [HH,MM] format // verified
@@ -337,7 +338,7 @@ function sendCommand(request,param,callBackError) {
 		if (param[0] >=0 && param[0] <=23 && param[1] >=0 && param[1] <= 59) { // Check hours and minutes within proper range
 			content = decHex(param[0]) + decHex(param[1]);
 		} else {
-			callBackError("Error in " + request);
+			return callBackError("Error in " + request);
 		}
 
 	} else if (request == "filterConfigRequest") { // verified
@@ -381,7 +382,7 @@ function sendCommand(request,param,callBackError) {
 		if (param == 0 || param == 1) { // 0 : on, 1 : off
 			content = "00" + decHex(param);
 		} else {
-			callBackError("Error in " + request);
+			return callBackError("Error in " + request);
 		}
 
 	} else if (request == "setTempScale") { // verified
@@ -390,7 +391,7 @@ function sendCommand(request,param,callBackError) {
 		if (param == 0 || param == 1) { // 0 : Fahrenheit, 1 : Celsius
 			content = "01" + decHex(param);
 		} else {
-			callBackError("Error in " + request);
+			return callBackError("Error in " + request);
 		}
 
 	} else if (request == "setTimeFormat") { // verified
@@ -399,7 +400,7 @@ function sendCommand(request,param,callBackError) {
 		if (param == 0 || param == 1) {
 			content = "02" + decHex(param);
 		} else {
-			callBackError("Error in " + request);
+			return callBackError("Error in " + request);
 		}
 
 	} else if (request == "setCleanCycle") { // verified
@@ -408,7 +409,7 @@ function sendCommand(request,param,callBackError) {
 		if (param >= 0 && param <= 8) { // Each integer represents 30 min increments
 			content = "03" + decHex(param);
 		} else {
-			callBackError("Error in " + request);
+			return callBackError("Error in " + request);
 		}
 
 	} else if (request == "setM8") {  // verified
@@ -416,14 +417,14 @@ function sendCommand(request,param,callBackError) {
 		if (param == 0 || param == 1) {
 			content = "06" + decHex(param);
 		} else {
-			callBackError("Error in " + request);
+			return callBackError("Error in " + request);
 		}
 
 	} else if (request == "setABTemp") {  // verified
   	type = "10 bf e0";
 		content = "03";
 
-	} else if (request == "test") {  // verified
+	} else if (request == "test") {  // only for testing (sending commands directly from web page)
 		type = param;
 	}
 
@@ -568,9 +569,11 @@ function checksum(hexstring) {
 console.log("ready");
 // Get some data for various settings (I still don't know what some of the responses mean...)
 setTimeout(function() {
-	sendCommand("filterConfigRequest","",checkError);
-	sendCommand("controlConfigRequest1","",checkError);
-	sendCommand("controlConfigRequest2","",checkError);
-	sendCommand("controlConfigRequest3","",checkError);
-	sendCommand("controlConfigRequest4","",checkError);
+	for (let i=0; i<=1; i++) { // Do this twice in case it doesn't go through first time for some reason
+		sendCommand("filterConfigRequest","",checkError);
+		sendCommand("controlConfigRequest1","",checkError);
+		sendCommand("controlConfigRequest2","",checkError);
+		sendCommand("controlConfigRequest3","",checkError);
+		sendCommand("controlConfigRequest4","",checkError);
+	}
 }, 2000);

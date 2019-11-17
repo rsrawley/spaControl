@@ -1,10 +1,47 @@
+body {
+	/*background-image: url("pictures/light-blue-background.jpg");
+	background-repeat: round;*/
+	background: rgb(0,113,196);
+	background: linear-gradient(90deg, rgba(0,113,196,1) 0%, rgba(152,173,189,1) 100%);
+}
+
+#setMinus,#setPlus {
+	height: 64px;
+	width: 64px;
+	background-repeat: round;
+	background-color: transparent;
+}
+
+#setMinus {
+	background-image: url("pictures/down.png");
+}
+
+#setPlus {
+	background-image: url("pictures/up.png");
+}
+
 .large {
 	font-size: 50px;
+	border: 2px solid black;
+	margin: 10px;
+	text-align: center;
+}
+
+.programs button{
+	background-color: transparent;
 }
 
 button {
 	font-size: 50px;
 	padding: 30px;
+}
+
+#CT,#HF {
+	color: red;
+}
+
+#ST {
+	color: orange;
 }
 
 

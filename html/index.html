@@ -16,15 +16,15 @@
 	<div class="large">
 		Status<br>
 		Time <span id="HH"></span>:<span id="MM"></span><br>		
-		Spa : <span id="CT"></span> &deg;F (<span id="HF"></span>)<br>
-		Set temperature: <span id="ST"></span> &deg;F<br>
+		Spa : <span id="CT"></span> <span class="degSymbol"></span> (<span id="HF"></span>)<br>
+		Set temperature: <button id="setMinus"></button> <span id="ST"></span> <span class="degSymbol"></span> <button id="setPlus"></button><br>
 		<!--Spa in on/spa is on hold (time left: 59 min)<br>-->
 	</div>
 	
 	<div class="large">
 		Weather<br>
-		Outdoor : 20 &deg;C<br>
-		Forecast: cloudy<br>
+		Outdoor : --- &deg;C (feels like ---)<br>
+		Forecast: ---<br>
 	</div>
 
 	<div class="large">
@@ -35,12 +35,19 @@
 		<button id="circ" disabled=true>Circ</button>
 	</div>
 
+	<div class="large programs">
+		Programs<br>
+		<button onclick="letsgo()">Going hot tubin'</button> 
+		<button onclick="alldone()">Done hot tubin'</button>
+	</div>
+
 	<div class="large">
 		Settings<br>
 		<div id="settingsRadioButtons"></div>
+		Heater sensor A: <span id="TA"></span> <span class="degSymbol"></span>, B: <span id="TB"></span> <span class="degSymbol"></span><br>
+		<br>
 		Filter cycle : 1<br>
 		Cleanup cycle: inactive<br>
-		Temp sensor A: 96 &deg;F, B: 98 &deg;F<br>
 		GFCI: passed/not passed<br>
 	</div>
 
@@ -69,20 +76,15 @@
 		Set temperature to : <input id="setTemp" type="number" value=100> <button id="setTempButton">Set Temp</button>
 	</div>
 	
-	<div id="toggles">
-	</div>
 <br>
 <br>
-	<div>
-		<button onclick="letsgo()">Going hot tubin'</button>
-		<button onclick="alldone()">Done hot tubin'</button>
-	</div>
+
 
 	<div>
-		<button onclick="sendValue('test','10 bf 22 09 00 0b 00 94 00 0c 00')">test1</button>
+		<button onclick="sendValue('test','10 bf 11 50 00')">test1</button>
 		<button onclick="sendValue('test','10 bf 23 09 00 0b 00 94 00 0c 00')">test2</button>
 		<button onclick="sendValue('test','10 bf 22 08 00 0c 00 94 00 0c 00')">test3</button>
-		<button onclick="sendValue('setM8','1')">test4</button>
+		<button onclick="sendValue('setABTemp','')">test4</button>
 	</div>
 </body>
 </html>
