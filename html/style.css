@@ -28,7 +28,8 @@ body {
 }
 
 .programs button{
-	background-color: transparent;
+	background-color: rgba(175, 175, 0, 0.5);
+
 }
 
 button {

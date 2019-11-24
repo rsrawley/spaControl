@@ -3,8 +3,14 @@
 
 <head>
 	<title>Hot Tub Interface</title>
+
+	<link rel="shortcut icon" href="pictures/hot_tub.png" type="image/x-icon">
+
 	<!-- Load websockets script -->
 	<script src="socket.io/socket.io.js"></script>
+
+  <!-- Load Google charts script -->
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 
 	<!-- Load style sheet -->
 	<link rel="stylesheet" type="text/css" href="style.css">
@@ -61,9 +67,7 @@
 		Logs<br>
 	</div>
 
-
-
-
+	<div id="graph" style="width: 900px; height: 500px"></div>
 
 	<div>
 		Last error : <span id="error"></span>

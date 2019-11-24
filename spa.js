@@ -62,6 +62,10 @@ io.on('connection', function(socket){
 		}
 	}
 
+	// Send initial graph data
+	io.emit('graphData',graphData);
+
+
   // Messages received
   socket.on('command', function(command) {
   	console.log('SOCKET.IO - Received message: ' + JSON.stringify(command));
@@ -79,6 +83,9 @@ function checkError(error) {
 
 // Every minute, check the time is right and adjust (if spa turned off, or daylight saving change)
 setInterval(function () {setTime()},60000)
+
+// Every 10 minutes, store spa temperature in array and write to file
+
 
 function setTime() {
 	if (spa.HH != undefined) { // Make sure we already have a connection
@@ -567,6 +574,7 @@ function checksum(hexstring) {
 }
 
 console.log("ready");
+
 // Get some data for various settings (I still don't know what some of the responses mean...)
 setTimeout(function() {
 	for (let i=0; i<=1; i++) { // Do this twice in case it doesn't go through first time for some reason
@@ -576,4 +584,23 @@ setTimeout(function() {
 		sendCommand("controlConfigRequest3","",checkError);
 		sendCommand("controlConfigRequest4","",checkError);
 	}
-}, 2000);
+},2000);
+
+// Read temperatures every 5 minutes for graph
+let graphData = [];
+setInterval(function() {
+	// Data format ['Time','Spa','Exterior','Heating']
+	let heatStatus = 0;
+	if (["2c","1c","28","18"].includes(spa.HF)) {
+		heatStatus = 1
+	}
+
+	graphData.push([new Date().getTime()/1000,Number(spa.CT),Number(spa.ST),heatStatus]);
+
+	// Keep only last 24 hours data (12 data points per hour and 24 h)
+	if (graphData.length >= 288) {
+		graphData.shift()
+	}
+
+	io.emit('graphData',graphData);
+},5*60000);

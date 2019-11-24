@@ -181,7 +181,7 @@ socket.on('data',function(data) {
 	
 	if (document.getElementById(data.id)) { // id exists ?
 		if (["CT","HH","MM","ST","TA","TB"].includes(data.id)) {
-			document.getElementById(data.id).innerHTML = parseInt(data.value,16); // Change hex to decimal
+			document.getElementById(data.id).innerHTML = parseInt(data.value,16).toString().padStart(2,"0"); // Change hex to decimal
 		} else if ([""].includes(data.id)) {
 			document.getElementById(data.id).innerHTML = data.value;
 		}
@@ -193,4 +193,60 @@ socket.on('data',function(data) {
 function sendValue(type,param) {
 	//console.log(type,param)
 	socket.emit('command',{"type" : type, "param" : param});
+}
+
+
+// Draw graph
+google.charts.load('current', {'packages':['corechart']})
+socket.on('graphData',function(graphData) {
+	google.charts.setOnLoadCallback(function(){drawChart(graphData)})
+})
+
+function drawChart(graphData) {
+	console.log(graphData)
+	/*
+	// Change the format of graphData from object to array and add milliseconds in data
+	var graphData = []
+	for (var key in dataObject) {
+		dataObject[key].unshift(key) // Add the hour to the array in front
+		graphData.push(dataObject[key])
+	}
+
+	// Sort by milliseconds
+	graphData.sort()
+*/
+	// Convert to date format
+	for (var i=0; i<graphData.length; i++) {
+		graphData[i][0] = new Date(graphData[i][0]*1000) // time stored in seconds, so convert to milliseconds
+	}
+
+	// Add column headings to data
+	//graphData.unshift(['Time','Indoor humidity','Outdoor temperature','Indoor temperature'])
+	graphData.unshift(['Time','Spa','Outdoor','Heating'])
+
+
+	// Chart data and options
+	var data = google.visualization.arrayToDataTable(graphData)
+				
+	var options = {
+		width: 800,
+		height: 480,
+		legend: {position: 'bottom'},
+		curveType : 'function',
+		hAxis : {format:'HH:mm'}, // hours:minutes
+		series: {
+			// Gives each series an axis name that matches the Y-axis below.
+			0: {targetAxisIndex:0, color:'green', lineWidth:'4'},
+			1: {targetAxisIndex:1 , color:'blue' , lineDashStyle:[4,4]},
+			2: {targetAxisIndex:2 , color:'red' , type:'area'} // alernatively, "steppedArea"
+		},
+		vAxes: {
+			0: {title:'Spa (°F)' , format:'decimal' , titleTextStyle:{color: 'green'} , textStyle:{color: 'green'} , minorGridlines:{count:0}},
+			1: {title:'set temp (eventuallyOutdoor (°C)' , format:'decimal' , titleTextStyle:{color: 'blue'} , textStyle:{color: 'blue'} , gridlines:{count:0}},
+			2: {format:'decimal' , viewWindow:{min:0, max:1} , gridlines:{count:0} , textPosition: 'none'}
+		}
+	}
+	
+	var chart = new google.visualization.ComboChart(document.getElementById('graph'))
+  chart.draw(data, options)		
 }
