@@ -232,7 +232,7 @@ function drawChart(graphData) {
 		width: 800,
 		height: 480,
 		legend: {position: 'bottom'},
-		curveType : 'function',
+		//curveType : 'function',
 		hAxis : {format:'HH:mm'}, // hours:minutes
 		series: {
 			// Gives each series an axis name that matches the Y-axis below.

@@ -7,11 +7,6 @@ in order to see output on terminal and save it to file
 
 // Don't forget every number from the hot tub is in hexadecimal !!!
 
-// Replace [ \t]+\n by \n to get rid of trailing white space
-
-// Set up file access
-const fs = require('fs');
-
 // Set up command line access
 cmd = require('node-cmd')
 
@@ -73,7 +68,7 @@ io.on('connection', function(socket){
 
   // Messages received
   socket.on('command', function(command) {
-  	console.log('SOCKET.IO - Received message: ' + JSON.stringify(command));
+  	console.log('SOCKET.IO - Received message: ' + JSON.stringify(command))
 		sendCommand(command.type,command.param,checkError);
   })
 })
@@ -98,7 +93,7 @@ function setTime() {
 		let currentDate = new Date();
 		let hours = currentDate.getHours();
 		let minutes = currentDate.getMinutes();
-
+		
 		let spaTime = new Date(2019,10,19,parseInt(spa.HH,16),parseInt(spa.MM,16)); // October 19, 2019 is an arbitrary date (I happened to work on this function that day)
 
 		// As long as spa time is within +/- 1 min of actual time, we're not modifying it
@@ -120,7 +115,7 @@ spa.testing=[]; // Only used for testing (displaying changes in configs)
 
 // Set up message translation matrix (codes must be unique as they are used to store data in spa{})
 let incoming = { // Status update
-	"ff af 13" : {
+	"ff af 13" : { 
 		"description" : "Status udpate",
 						    //17 00 62 15 0a 00 00 00 00 08 0c 00 00 02 00 00 00 00 00 04 60 00 00 00 1e 00 00
 		"codeLine" : "GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CC ST TC 00 00 H2 00 00".split(" "),
@@ -197,7 +192,7 @@ let incoming = { // Status update
 
 	"10 bf 28" : { // Faults log
 		"description" : "Faults log",
-						 	 // 0c 0a 10 55 17 21 10 64 60 66
+						 	 // 0c 0a 10 55 17 21 10 64 60 66 
 		"codeLine" : "TO EN EC ND FH FM FE FS FA FB".split(" "),
 		"codes" : {
 			"TO" : "Total number of entries", // verified
@@ -215,7 +210,7 @@ let incoming = { // Status update
 
 	"10 bf 2b" : { // GFCI test result
 		"description" : "GFCI test result",
-						 	 // 01
+						 	 // 01 
 		"codeLine" : "GF".split(" "),
 		"codes" : {
 			"GF" : "GFCI test result (0 = not passed, 1 = passed)", // verified
@@ -301,7 +296,7 @@ function readData(data) {
 			}
 
 		} else if ((message.type in incoming && ignore.indexOf(message.type) == -1) || message.type == "ff af 13")  { // I have a definition for this message type and it is not in the ignore list or it's the regular status update
-
+			
 			let codeLine = incoming[message.type].codeLine; // Order of codes
 			let codes = incoming[message.type].codes; // Translation of codes
 
@@ -591,23 +586,8 @@ setTimeout(function() {
 	}
 },2000);
 
-
-// *************** Graph set up ***************
-
-// Read file to get data (if it exists)
-//let graphData = fs.readFileSync('graphData','utf8', function(err,data) {
-let graphData = [];
-fs.readFile('graphData','utf8', function(err,data) {
-	if (err) {
-		console.log("Error reading graph data from file OR file does not exist.")
-	} else {
-		console.log("Graph data was read from file.");
-		console.log(data)
-		graphData = JSON.parse(data);
-	}
-});
-
 // Read temperatures every 5 minutes for graph
+let graphData = [];
 setInterval(function() {
 	// Data format ['Time','Spa','Exterior','Heating']
 	let heatStatus = 0;
@@ -615,7 +595,7 @@ setInterval(function() {
 		heatStatus = 1
 	}
 
-	graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(Number(spa.CT),16),parseInt(Number(spa.ST),16),heatStatus]);
+	graphData.push([Math.round(new Date().getTime()/1000/60)*60,Number(spa.CT),Number(spa.ST),heatStatus]);
 
 	// Keep only last 24 hours data (12 data points per hour and 24 h)
 	if (graphData.length >= 288) {
@@ -624,14 +604,3 @@ setInterval(function() {
 
 	io.emit('graphData',graphData);
 },5*60000);
-
-// Save to file every hour
-setInterval(function() {
-	fs.writeFile('graphData', JSON.stringify(graphData), 'utf8', function(err) {
-  	if (err) {
-  		console.log("Error saving graph data.")
-  	} else {
-  		console.log('Graph data saved.');
-  	}
-	});
-},60*60000);

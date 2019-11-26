@@ -7,11 +7,6 @@ in order to see output on terminal and save it to file
 
 // Don't forget every number from the hot tub is in hexadecimal !!!
 
-// Replace [ \t]+\n by \n to get rid of trailing white space
-
-// Set up file access
-const fs = require('fs');
-
 // Set up command line access
 cmd = require('node-cmd')
 
@@ -197,7 +192,7 @@ let incoming = { // Status update
 
 	"10 bf 28" : { // Faults log
 		"description" : "Faults log",
-						 	 // 0c 0a 10 55 17 21 10 64 60 66
+						 	 // 0c 0a 10 55 17 21 10 64 60 66 
 		"codeLine" : "TO EN EC ND FH FM FE FS FA FB".split(" "),
 		"codes" : {
 			"TO" : "Total number of entries", // verified
@@ -301,7 +296,7 @@ function readData(data) {
 			}
 
 		} else if ((message.type in incoming && ignore.indexOf(message.type) == -1) || message.type == "ff af 13")  { // I have a definition for this message type and it is not in the ignore list or it's the regular status update
-
+			
 			let codeLine = incoming[message.type].codeLine; // Order of codes
 			let codes = incoming[message.type].codes; // Translation of codes
 
@@ -323,30 +318,30 @@ function sendCommand(request,param,callBackError) {
   // Some messages need config requests to be sent first
   let type;
   let content = "";
-
+  
 	if (request == "toggleItem") { // verified
   	type = "10 bf 11";
-
+		
 		let allowed = {"pump1" : "04", "pump2" : "05", "lights" : "11", "heatMode" : "51", "tempRange" : "50", "hold" : "3c"};
 		if (param in allowed) {
 			content = allowed[param] + "00";
 		} else {
 			return callBackError("Error in " + request);
 		}
-
+		
 	} else if (request == "setTemp") { // verified
   	type = "10 bf 20";
 //range is 80-104 for F, 26-40 for C in high range
-//range is 50-80 for F, 10-26 for C in low range
+//range is 50-80 for F, 10-26 for C in low range		
 		if (param >= 50 && param <= 104) { // how to know if in low/high range???
 			content = decHex(param);
 		} else {
 			return callBackError("Error in " + request);
 		}
-
+			
 	} else if (request == "setTime") {  // Expects param to be in [HH,MM] format // verified
   	type = "10 bf 21";
-
+				
 		if (param[0] >=0 && param[0] <=23 && param[1] >=0 && param[1] <= 59) { // Check hours and minutes within proper range
 			content = decHex(param[0]) + decHex(param[1]);
 		} else {
@@ -380,7 +375,7 @@ function sendCommand(request,param,callBackError) {
   	if (param != undefined) {
   		content = "20" + decHex(param) + "00"
   	}
-
+	
 	} else if (request == "getGfciTest") {  // verified
   	type = "10 bf 22";
 		content = "80 00 00";
@@ -390,7 +385,7 @@ function sendCommand(request,param,callBackError) {
 		//content = "80 00 00";
 
 	} else if (request == "setReminders") { // verified
-  	type = "10 bf 27";
+  	type = "10 bf 27";	
 		if (param == 0 || param == 1) { // 0 : on, 1 : off
 			content = "00" + decHex(param);
 		} else {
@@ -399,7 +394,7 @@ function sendCommand(request,param,callBackError) {
 
 	} else if (request == "setTempScale") { // verified
   	type = "10 bf 27";
-
+		
 		if (param == 0 || param == 1) { // 0 : Fahrenheit, 1 : Celsius
 			content = "01" + decHex(param);
 		} else {
@@ -408,7 +403,7 @@ function sendCommand(request,param,callBackError) {
 
 	} else if (request == "setTimeFormat") { // verified
   	type = "10 bf 27";
-
+				
 		if (param == 0 || param == 1) {
 			content = "02" + decHex(param);
 		} else {
@@ -417,7 +412,7 @@ function sendCommand(request,param,callBackError) {
 
 	} else if (request == "setCleanCycle") { // verified
   	type = "10 bf 27";
-
+				
 		if (param >= 0 && param <= 8) { // Each integer represents 30 min increments
 			content = "03" + decHex(param);
 		} else {
@@ -471,14 +466,14 @@ function displayMessages(type,content) {
 			} else {
 				output.push(content[i])
 			}
-		}
+		}		
 
 		if (incoming[type] != undefined) {
 			console.log("type: ",type," (",incoming[type].description,")")
 		} else {
 			console.log("type: ",type)
 		}
-
+		
 		if (spa.testing[type].length > 0 || output.length > 0) {
 			console.log("old: ",spa.testing[type].join(" "));
 			console.log("new: ",output.join(" "));
@@ -502,7 +497,7 @@ function decHex(number) {
 function prepareMessage(data) {
 	// Remove all spaces
 	data = data.replace(/ /g, '');
-
+	
 	// Compute length of final message (+1 for length byte and +1 for checksum byte)
 	let length = data.length/2 + 2;
 	data = length.toString(16).padStart(2,"0") + data;
@@ -512,9 +507,9 @@ function prepareMessage(data) {
 	data = data + crc;
 
 	// Append message start and end bytes
-	data = "7e" + data + "7e";
+	data = "7e" + data + "7e"; 
 
-	// Change HEX string to ASCII characters
+	// Change HEX string to ASCII characters	
 	let asciiString="";
 	for (let i=0; i<data.length/2; i++) {
 		asciiString = asciiString + String.fromCharCode(parseInt(data.substr(i*2,2),16))
@@ -526,7 +521,7 @@ function prepareMessage(data) {
 
 
 // Returns a function that needs to be executed when sending message
-function getTransmissionFunc(asciiString,hexString) {
+function getTransmissionFunc(asciiString,hexString) { 
 	return 	function() {
 		RE_DE.write(1, function() { // Switch RS485 module to transmit
 			port.write(asciiString, 'ascii', function(err) {
@@ -539,7 +534,7 @@ function getTransmissionFunc(asciiString,hexString) {
 			  // Switch RS485 module back to receive
 			  RE_DE.write(0);
 			})
-		})
+		})		
 	}
 }
 
@@ -591,23 +586,8 @@ setTimeout(function() {
 	}
 },2000);
 
-
-// *************** Graph set up ***************
-
-// Read file to get data (if it exists)
-//let graphData = fs.readFileSync('graphData','utf8', function(err,data) {
-let graphData = [];
-fs.readFile('graphData','utf8', function(err,data) {
-	if (err) {
-		console.log("Error reading graph data from file OR file does not exist.")
-	} else {
-		console.log("Graph data was read from file.");
-		console.log(data)
-		graphData = JSON.parse(data);
-	}
-});
-
 // Read temperatures every 5 minutes for graph
+let graphData = [];
 setInterval(function() {
 	// Data format ['Time','Spa','Exterior','Heating']
 	let heatStatus = 0;
@@ -615,7 +595,7 @@ setInterval(function() {
 		heatStatus = 1
 	}
 
-	graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(Number(spa.CT),16),parseInt(Number(spa.ST),16),heatStatus]);
+	graphData.push([Math.round(new Date().getTime()/1000/60)*60,Number(spa.CT),Number(spa.ST),heatStatus]);
 
 	// Keep only last 24 hours data (12 data points per hour and 24 h)
 	if (graphData.length >= 288) {
@@ -624,14 +604,3 @@ setInterval(function() {
 
 	io.emit('graphData',graphData);
 },5*60000);
-
-// Save to file every hour
-setInterval(function() {
-	fs.writeFile('graphData', JSON.stringify(graphData), 'utf8', function(err) {
-  	if (err) {
-  		console.log("Error saving graph data.")
-  	} else {
-  		console.log('Graph data saved.');
-  	}
-	});
-},60*60000);
