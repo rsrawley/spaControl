@@ -138,52 +138,60 @@ socket.on('error',function(error) {
 // Receive data websockets
 socket.on('data',function(data) {
 	//console.log(data);
-	data.value = data.value.toString().padStart(2,"0"); // Put zeroes in front so it looks like hex (easier for me to spot in if statements)
-
-	if (data.id == "HF") { // Heat flag -- also contains high/low range info
-		let heat = [{"04" : "On hold", "0c" : "Not heating", "2c" : "Waiting", "1c" : "Heating"}, // High range
-								{"00" : "On hold", "08" : "Not heating", "28" : "Waiting", "18" : "Heating"}]; // Low range
-		
-		if (data.value in heat[0]) {
-			document.getElementById("HF").innerHTML = heat[0][data.value]; // Heat status
-			document.getElementById("HF_0").checked = true; // High/low range
-		} else if (data.value in heat[1]) {
-			document.getElementById("HF").innerHTML = heat[1][data.value]; // Heat status
-			document.getElementById("HF_1").checked = true; // High/low range
+	if (data.id == "weather") {
+		for (let key in data.value) {
+			document.getElementById(key).innerHTML = data.value[key]
 		}
 
-	} else if (data.id == "LF") { // Lights
-		document.getElementById("lights").style.backgroundColor = {"00" : "red", "03" : "limegreen"}[data.value];
+	} else {
 
-	} else if (data.id == "PP") { // Jets
-		let colors = ["red", "limegreen"];
-		document.getElementById("jets1").style.backgroundColor = colors[{"00" : [0,0], "02" : [1,0], "08" : [0,1], "0a" : [1,1]}[data.value][0]];
-		document.getElementById("jets2").style.backgroundColor = colors[{"00" : [0,0], "02" : [1,0], "08" : [0,1], "0a" : [1,1]}[data.value][1]];
+		data.value = data.value.toString().padStart(2,"0"); // Put zeroes in front so it looks like hex (easier for me to spot in if statements)
 
-	} else if (data.id == "CP") { // Circ
-		document.getElementById("circ").style.backgroundColor = {"00" : "red", "02" : "limegreen"}[data.value];
+		if (data.id == "HF") { // Heat flag -- also contains high/low range info
+			let heat = [{"04" : "On hold", "0c" : "Not heating", "2c" : "Waiting", "1c" : "Heating"}, // High range
+									{"00" : "On hold", "08" : "Not heating", "28" : "Waiting", "18" : "Heating"}]; // Low range
+			
+			if (data.value in heat[0]) {
+				document.getElementById("HF").innerHTML = heat[0][data.value]; // Heat status
+				document.getElementById("HF_0").checked = true; // High/low range
+			} else if (data.value in heat[1]) {
+				document.getElementById("HF").innerHTML = heat[1][data.value]; // Heat status
+				document.getElementById("HF_1").checked = true; // High/low range
+			}
 
-	} else if (data.id == "2H") { // Filter start hour also has on/off info
-		// filter 2 cycle on(1) or off(0)
-		let filter2 = Math.floor(parseInt(data.value,16)/128) // this is not displayed right now
-		data.value = (parseInt(data.value,16) % 128).toString(16) // mod 128 to take out high bit
+		} else if (data.id == "LF") { // Lights
+			document.getElementById("lights").style.backgroundColor = {"00" : "red", "03" : "limegreen"}[data.value];
 
-	} else if (["TS","RM","M8","TF","CC"].includes(data.id)) { // Temperature scale
-		document.getElementById(data.id + "_" + parseInt(data.value,10)).checked = true;
+		} else if (data.id == "PP") { // Jets
+			let colors = ["red", "limegreen"];
+			document.getElementById("jets1").style.backgroundColor = colors[{"00" : [0,0], "02" : [1,0], "08" : [0,1], "0a" : [1,1]}[data.value][0]];
+			document.getElementById("jets2").style.backgroundColor = colors[{"00" : [0,0], "02" : [1,0], "08" : [0,1], "0a" : [1,1]}[data.value][1]];
 
-		if (data.id == "TS") {
-			let symbol = document.getElementsByClassName("degSymbol");
-			for (let i=0; i<symbol.length; i++) {				
-				symbol[i].innerHTML = ["&deg;F","&deg;C"][Number(data.value)]
+		} else if (data.id == "CP") { // Circ
+			document.getElementById("circ").style.backgroundColor = {"00" : "red", "02" : "limegreen"}[data.value];
+
+		} else if (data.id == "2H") { // Filter start hour also has on/off info
+			// filter 2 cycle on(1) or off(0)
+			let filter2 = Math.floor(parseInt(data.value,16)/128) // this is not displayed right now
+			data.value = (parseInt(data.value,16) % 128).toString(16) // mod 128 to take out high bit
+
+		} else if (["TS","RM","M8","TF","CC"].includes(data.id)) { // Temperature scale
+			document.getElementById(data.id + "_" + parseInt(data.value,10)).checked = true;
+
+			if (data.id == "TS") {
+				let symbol = document.getElementsByClassName("degSymbol");
+				for (let i=0; i<symbol.length; i++) {				
+					symbol[i].innerHTML = ["&deg;F","&deg;C"][Number(data.value)]
+				}
 			}
 		}
-	}
-	
-	if (document.getElementById(data.id)) { // id exists ?
-		if (["CT","HH","MM","ST","TA","TB"].includes(data.id)) {
-			document.getElementById(data.id).innerHTML = parseInt(data.value,16).toString().padStart(2,"0"); // Change hex to decimal
-		} else if ([""].includes(data.id)) {
-			document.getElementById(data.id).innerHTML = data.value;
+		
+		if (document.getElementById(data.id)) { // id exists ?
+			if (["CT","HH","MM","ST","TA","TB"].includes(data.id)) {
+				document.getElementById(data.id).innerHTML = parseInt(data.value,16).toString().padStart(2,"0"); // Change hex to decimal
+			} else if ([""].includes(data.id)) {
+				document.getElementById(data.id).innerHTML = data.value;
+			}
 		}
 	}
 })
@@ -203,7 +211,6 @@ socket.on('graphData',function(graphData) {
 })
 
 function drawChart(graphData) {
-	console.log(graphData)
 	/*
 	// Change the format of graphData from object to array and add milliseconds in data
 	var graphData = []
@@ -242,7 +249,7 @@ function drawChart(graphData) {
 		},
 		vAxes: {
 			0: {title:'Spa (°F)' , format:'decimal' , titleTextStyle:{color: 'green'} , textStyle:{color: 'green'} , minorGridlines:{count:0}},
-			1: {title:'set temp (eventuallyOutdoor (°C)' , format:'decimal' , titleTextStyle:{color: 'blue'} , textStyle:{color: 'blue'} , gridlines:{count:0}},
+			1: {title:'Outdoor (°C)' , format:'decimal' , titleTextStyle:{color: 'blue'} , textStyle:{color: 'blue'} , gridlines:{count:0}},
 			2: {format:'decimal' , viewWindow:{min:0, max:1} , gridlines:{count:0} , textPosition: 'none'}
 		}
 	}

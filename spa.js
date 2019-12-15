@@ -49,6 +49,27 @@ process.on('SIGINT', function () {
 	process.exit()
 })
 
+// Set up client requests for weather
+let request = require("request");
+fetchWeather(); // Initial call
+setTimeout(fetchWeather, 5 * 60000); // Every 5 minutes after that
+
+function fetchWeather() {
+	request({"url": "http://192.168.1.58:3000/current", "json": true}, function (error, response, body) {
+		if (!error && response.statusCode === 200) {
+			spa.weather = {
+				"temperature": body.temperature,
+				"feelsLike": body.feelsLike,
+				"wind": body.wind,
+				"windDir": body.windDir
+			}
+
+			io.emit('data',{"id" : "weather", "value" : spa.weather}); // Send to all connected clients
+		}
+	})
+}
+
+
 // Set up web server
 const express = require('express'); // Web server
 const app = express();
@@ -319,61 +340,61 @@ function readData(data) {
 }
 
 
-function sendCommand(request,param,callBackError) {
+function sendCommand(requested,param,callBackError) {
   // Some messages need config requests to be sent first
   let type;
   let content = "";
 
-	if (request == "toggleItem") { // verified
+	if (requested == "toggleItem") { // verified
   	type = "10 bf 11";
 
 		let allowed = {"pump1" : "04", "pump2" : "05", "lights" : "11", "heatMode" : "51", "tempRange" : "50", "hold" : "3c"};
 		if (param in allowed) {
 			content = allowed[param] + "00";
 		} else {
-			return callBackError("Error in " + request);
+			return callBackError("Error in " + requested);
 		}
 
-	} else if (request == "setTemp") { // verified
+	} else if (requested == "setTemp") { // verified
   	type = "10 bf 20";
 //range is 80-104 for F, 26-40 for C in high range
 //range is 50-80 for F, 10-26 for C in low range
 		if (param >= 50 && param <= 104) { // how to know if in low/high range???
 			content = decHex(param);
 		} else {
-			return callBackError("Error in " + request);
+			return callBackError("Error in " + requested);
 		}
 
-	} else if (request == "setTime") {  // Expects param to be in [HH,MM] format // verified
+	} else if (requested == "setTime") {  // Expects param to be in [HH,MM] format // verified
   	type = "10 bf 21";
 
 		if (param[0] >=0 && param[0] <=23 && param[1] >=0 && param[1] <= 59) { // Check hours and minutes within proper range
 			content = decHex(param[0]) + decHex(param[1]);
 		} else {
-			return callBackError("Error in " + request);
+			return callBackError("Error in " + requested);
 		}
 
-	} else if (request == "filterConfigRequest") { // verified
+	} else if (requested == "filterConfigRequest") { // verified
   	type = "10 bf 22";
 		content = "01 00 00";
 
-	} else if (request == "controlConfigRequest1") { // verified
+	} else if (requested == "controlConfigRequest1") { // verified
   	type = "10 bf 22";
 		content = "02 00 00";
 
-	} else if (request == "controlConfigRequest2") { // verified -- unknown what response means
+	} else if (requested == "controlConfigRequest2") { // verified -- unknown what response means
   	type = "10 bf 22";
 		content = "04 00 00";
 
-	} else if (request == "controlConfigRequest3") {  // verified
+	} else if (requested == "controlConfigRequest3") {  // verified
   	type = "10 bf 22";
 		content = "08 00 00";
 
-	} else if (request == "controlConfigRequest4") { // verified  -- unknown what response means
+	} else if (requested == "controlConfigRequest4") { // verified  -- unknown what response means
   	type = "10 bf 22";
 		content = "00 00 01";
 
-	} else if (request == "getFaults") {
+	} else if (requested == "getFaults") {
   	type = "10 bf 22";
 		content = "20 ff 00";
 
@@ -381,62 +402,62 @@ function sendCommand(request,param,callBackError) {
   		content = "20" + decHex(param) + "00"
   	}
 
-	} else if (request == "getGfciTest") {  // verified
+	} else if (requested == "getGfciTest") {  // verified
   	type = "10 bf 22";
 		content = "80 00 00";
 
-	} else if (request == "setFilterTime") {  // verified
+	} else if (requested == "setFilterTime") {  // verified
   	//type = "10 bf 23";
 		//content = "80 00 00";
 
-	} else if (request == "setReminders") { // verified
+	} else if (requested == "setReminders") { // verified
   	type = "10 bf 27";
 		if (param == 0 || param == 1) { // 0 : on, 1 : off
 			content = "00" + decHex(param);
 		} else {
-			return callBackError("Error in " + request);
+			return callBackError("Error in " + requested);
 		}
 
-	} else if (request == "setTempScale") { // verified
+	} else if (requested == "setTempScale") { // verified
   	type = "10 bf 27";
 
 		if (param == 0 || param == 1) { // 0 : Fahrenheit, 1 : Celsius
 			content = "01" + decHex(param);
 		} else {
-			return callBackError("Error in " + request);
+			return callBackError("Error in " + requested);
 		}
 
-	} else if (request == "setTimeFormat") { // verified
+	} else if (requested == "setTimeFormat") { // verified
   	type = "10 bf 27";
 
 		if (param == 0 || param == 1) {
 			content = "02" + decHex(param);
 		} else {
-			return callBackError("Error in " + request);
+			return callBackError("Error in " + requested);
 		}
 
-	} else if (request == "setCleanCycle") { // verified
+	} else if (requested == "setCleanCycle") { // verified
   	type = "10 bf 27";
 
 		if (param >= 0 && param <= 8) { // Each integer represents 30 min increments
 			content = "03" + decHex(param);
 		} else {
-			return callBackError("Error in " + request);
+			return callBackError("Error in " + requested);
 		}
 
-	} else if (request == "setM8") {  // verified
+	} else if (requested == "setM8") {  // verified
   	type = "10 bf 27";
 		if (param == 0 || param == 1) {
 			content = "06" + decHex(param);
 		} else {
-			return callBackError("Error in " + request);
+			return callBackError("Error in " + requested);
 		}
 
-	} else if (request == "setABTemp") {  // verified
+	} else if (requested == "setABTemp") {  // verified
   	type = "10 bf e0";
 		content = "03";
 
-	} else if (request == "test") {  // only for testing (sending commands directly from web page)
+	} else if (requested == "test") {  // only for testing (sending commands directly from web page)
 		type = param;
 	}
 
@@ -602,7 +623,6 @@ fs.readFile('graphData','utf8', function(err,data) {
 		console.log("Error reading graph data from file OR file does not exist.")
 	} else {
 		console.log("Graph data was read from file.");
-		console.log(data)
 		graphData = JSON.parse(data);
 	}
 });
@@ -615,7 +635,7 @@ setInterval(function() {
 		heatStatus = 1
 	}
 
-	graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(Number(spa.CT),16),parseInt(Number(spa.ST),16),heatStatus]);
+	graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(Number(spa.CT),16),parseInt(Number(spa.weather.temperature),16),heatStatus]);
 
 	// Keep only last 24 hours data (12 data points per hour and 24 h)
 	if (graphData.length >= 288) {
