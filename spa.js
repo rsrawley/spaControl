@@ -52,19 +52,22 @@ process.on('SIGINT', function () {
 // Set up client requests for weather
 let request = require("request");
 fetchWeather(); // Initial call
-setTimeout(fetchWeather, 5 * 60000); // Every 5 minutes after that
+setInterval(fetchWeather, 5 * 60000); // Every 5 minutes after that
 
 function fetchWeather() {
 	request({"url": "http://192.168.1.58:3000/current", "json": true}, function (error, response, body) {
 		if (!error && response.statusCode === 200) {
-			spa.weather = {
-				"temperature": body.temperature,
-				"feelsLike": body.feelsLike,
-				"wind": body.wind,
-				"windDir": body.windDir
-			}
+			// If anything goes wrong with weather info lookup, do not update weather values
+			if (body.temperature != undefined && body.feelsLike != undefined && body.wind != undefined && body.windDir != undefined) {
+				spa.weather = {
+					"temperature": body.temperature,
+					"feelsLike": body.feelsLike,
+					"wind": body.wind,
+					"windDir": body.windDir
+				}
 
-			io.emit('data',{"id" : "weather", "value" : spa.weather}); // Send to all connected clients
+				io.emit('data',{"id" : "weather", "value" : spa.weather}); // Send to all connected clients
+			}
 		}
 	})
 }
