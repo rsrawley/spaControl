@@ -211,31 +211,23 @@ socket.on('graphData',function(graphData) {
 })
 
 function drawChart(graphData) {
-	/*
-	// Change the format of graphData from object to array and add milliseconds in data
-	var graphData = []
-	for (var key in dataObject) {
-		dataObject[key].unshift(key) // Add the hour to the array in front
-		graphData.push(dataObject[key])
-	}
-
-	// Sort by milliseconds
-	graphData.sort()
-*/
 	// Convert to date format
-	for (var i=0; i<graphData.length; i++) {
+	for (let i=0; i<graphData.length; i++) {
 		graphData[i][0] = new Date(graphData[i][0]*1000) // time stored in seconds, so convert to milliseconds
+		
+		for (let j=1; j<graphData[i].length; j++) {
+			graphData[i][j] = Number(graphData[i][j]) // Make sure only numbers are there
+		}
 	}
 
 	// Add column headings to data
 	//graphData.unshift(['Time','Indoor humidity','Outdoor temperature','Indoor temperature'])
 	graphData.unshift(['Time','Spa','Outdoor','Heating'])
 
-
 	// Chart data and options
-	var data = google.visualization.arrayToDataTable(graphData)
+	let data = google.visualization.arrayToDataTable(graphData)
 				
-	var options = {
+	let options = {
 		width: 800,
 		height: 480,
 		legend: {position: 'bottom'},
@@ -253,7 +245,7 @@ function drawChart(graphData) {
 			2: {format:'decimal' , viewWindow:{min:0, max:1} , gridlines:{count:0} , textPosition: 'none'}
 		}
 	}
-	
-	var chart = new google.visualization.ComboChart(document.getElementById('graph'))
+
+	let chart = new google.visualization.ComboChart(document.getElementById('graph'))
   chart.draw(data, options)		
 }

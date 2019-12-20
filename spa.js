@@ -1,3 +1,16 @@
+/* Smart heating ?
+
+Winter hours
+Time of use: Nov 1 to April 30
+7pm to 7am : 10.1 c/kWh off-peak
+7pm to 11am : 20.8 c/kWh on-peak
+11pm to 5pm : 14.4 c/kWh mid-peak
+5pm to 7pm : 20.8 c/kWh on-peak
+
+So let it cool off at 7am - sep temp to 85F
+Set to heat at 7pm - set to 96F
+*/
+
 /* Use
 
 node spa.js 2>&1 | tee test1 &
@@ -13,7 +26,7 @@ in order to see output on terminal and save it to file
 const fs = require('fs');
 
 // Set up command line access
-cmd = require('node-cmd')
+cmd = require('node-cmd');
 
 // Check every minute for internet connectivity
 checkConnectivity(0);
@@ -344,6 +357,7 @@ function readData(data) {
 
 
 function sendCommand(requested,param,callBackError) {
+	console.log(requested)
   // Some messages need config requests to be sent first
   let type;
   let content = "";
@@ -602,7 +616,7 @@ function checksum(hexstring) {
   return crc.toString(16).padStart(2,"0");
 }
 
-console.log("ready");
+console.log("Ready");
 
 // Get some data for various settings (I still don't know what some of the responses mean...)
 setTimeout(function() {
@@ -638,7 +652,7 @@ setInterval(function() {
 		heatStatus = 1
 	}
 
-	graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(Number(spa.CT),16),parseInt(Number(spa.weather.temperature),16),heatStatus]);
+	graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(Number(spa.CT),16),Number(spa.weather.temperature),heatStatus]);
 
 	// Keep only last 24 hours data (12 data points per hour and 24 h)
 	if (graphData.length >= 288) {
@@ -658,3 +672,45 @@ setInterval(function() {
   	}
 	});
 },60*60000);
+
+
+
+/*
+// Check for electricity savings time (7am to 7pm)
+setTimer();
+
+function setTimer() {
+	let currentDate = new Date();
+	let timeDelay;
+
+	if (currentDate.getHours() < 7) {
+		// timeDelay = figure out how many milliseconds to 7am
+	}
+
+	// 7am shutoff
+	setTimeout(function() {
+		saveElectricity(1);
+
+		setInterval(function() {
+			saveElectricity(1)
+		})
+	},timeDelay);
+
+	// 7pm turn on
+	setTimeout(function() {
+		saveElectricity(0);
+
+		setInterval(function() {
+			saveElectricity(0)
+		})
+	},timeDelay2)
+}
+
+function saveElectricity(activate) {
+	if (activate == 1) {
+		sendCommand("setTemp",80,checkError); // Lower temperature to 80 F to save electricity
+	} else {
+		sendCommand("setTemp",96,checkError); // Raise temperature back to 96 F to heat it back up during cheap time
+	}
+}
+*/
