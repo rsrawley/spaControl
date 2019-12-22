@@ -226,23 +226,29 @@ function drawChart(graphData) {
 
 	// Chart data and options
 	let data = google.visualization.arrayToDataTable(graphData)
-				
+
+	let colors = {
+		'spa' : 'limegreen',
+		'outdoor' : 'dodgerblue',
+		'heating' : 'red'
+	}
+
 	let options = {
-		width: 800,
-		height: 480,
-		legend: {position: 'bottom'},
+		chartArea:{width:'80%',height:'80%'},
+		backgroundColor: '#000',//{ fill:'transparent' },
+		legend: {position: 'bottom', textStyle:{color: 'white'}},
 		//curveType : 'function',
-		hAxis : {format:'HH:mm'}, // hours:minutes
+		hAxis : {format:'HH:mm', textStyle:{color: 'white'}}, // hours:minutes
 		series: {
 			// Gives each series an axis name that matches the Y-axis below.
-			0: {targetAxisIndex:0, color:'green', lineWidth:'4'},
-			1: {targetAxisIndex:1 , color:'blue' , lineDashStyle:[4,4]},
-			2: {targetAxisIndex:2 , color:'red' , type:'area'} // alernatively, "steppedArea"
+			0: {targetAxisIndex:0, color:colors.spa, lineWidth:'4'},
+			1: {targetAxisIndex:1 , color:colors.outdoor , lineDashStyle:[4,4]},
+			2: {targetAxisIndex:2 , color:colors.heating , type:'area'} // alernatively, "steppedArea"
 		},
 		vAxes: {
-			0: {title:'Spa (°F)' , format:'decimal' , titleTextStyle:{color: 'green'} , textStyle:{color: 'green'} , minorGridlines:{count:0}},
-			1: {title:'Outdoor (°C)' , format:'decimal' , titleTextStyle:{color: 'blue'} , textStyle:{color: 'blue'} , gridlines:{count:0}},
-			2: {format:'decimal' , viewWindow:{min:0, max:1} , gridlines:{count:0} , textPosition: 'none'}
+			0: {title:'Spa (°F)', format:'decimal', titleTextStyle:{color: colors.spa}, textStyle:{color: colors.spa}, minorGridlines:{count:0}, viewWindow:{min:90,max:104}},
+			1: {title:'Outdoor (°C)', format:'decimal', titleTextStyle:{color: colors.outdoor}, textStyle:{color: colors.outdoor}, gridlines:{count:0}},
+			2: {format:'decimal', viewWindow:{min:0, max:1}, gridlines:{count:0}, textPosition: 'none', viewWindow:{min:0.1}}
 		}
 	}
 

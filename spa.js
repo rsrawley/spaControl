@@ -162,7 +162,7 @@ let incoming = { // Status update
 						    //17 00 62 15 0a 00 00 00 00 08 0c 00 00 02 00 00 00 00 00 04 60 00 00 00 1e 00 00
 		"codeLine" : "GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CC ST TC 00 00 H2 00 00".split(" "),
 		"codes" : {
-			"GF" : "General flag (05 = on hold)",
+			"GF" : "General flag (05 = on hold)", // set to 17 without A/B temperature sensor activated, set to 14 otherwise???
 			"PF" : "Priming flag (on start, goes through different stages: 04,42,05,01,00 ---0x01 = Priming)",
 			"CT" : "Current temperature (in F) -- 00 means no temp reading", // verified
 			"HH" : "Hours", // verified
@@ -177,7 +177,7 @@ let incoming = { // Status update
 			"LF" : "Light flag (0x03 for on)", // verified
 			"CF" : "Cleanup cycle flag (0x04 off, 0x0c for on)",
 			"ST" : "Set temperature", // verified
-			"TC" : "Temperature A/B flag (0x00 = off, 0x01  = on)",
+			"TC" : "Temperature A/B flag (0x00 = off, 0x01  = on)", // verified
 			"H2" : "Heat mode 2nd flag (0x00 = when HM is 01, 0x1e = when HM is 00, also goes to 00 if M8 set to off and goes back to 1e if M8 set to on)" // could be timer on m8?
 		}
 	},
@@ -629,6 +629,16 @@ setTimeout(function() {
 	}
 },2000);
 
+// Active A/B temperature readings
+setTimeout(function() {
+	if (spa.TC == "00") { // Only send command if not activated (it's a toggle command)
+		sendCommand("setABTemp","",checkError);
+		console.log("A/B temperature sensor activated")
+	} else {
+		console.log("A/B temperature sensor already active")
+	}
+},3000)
+
 
 // *************** Graph set up ***************
 
@@ -652,7 +662,7 @@ setInterval(function() {
 		heatStatus = 1
 	}
 
-	graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(Number(spa.CT),16),Number(spa.weather.temperature),heatStatus]);
+	graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(spa.CT,16),parseInt(spa.weather.temperature,10),heatStatus]);
 
 	// Keep only last 24 hours data (12 data points per hour and 24 h)
 	if (graphData.length >= 288) {
@@ -675,35 +685,29 @@ setInterval(function() {
 
 
 
-/*
+
 // Check for electricity savings time (7am to 7pm)
-setTimer();
+setTimer(7,1); // Initial call to turn it on at 7am
+setTimer(19,0); // Initial call to turn it off at 7pm
 
-function setTimer() {
-	let currentDate = new Date();
-	let timeDelay;
+function setTimer(hour,saveElectricityFlag) {
+	let currentTime = new Date().getTime();
+	let shutOffTime = new Date().setHours(hour,0,0,0); // Set it to 7am/7pm same day
 
-	if (currentDate.getHours() < 7) {
-		// timeDelay = figure out how many milliseconds to 7am
+	let timeDelay = shutOffTime - currentTime;
+
+	if (timeDelay <= 0) { // 7am/7pm is in the past, so add 24 h
+		timeDelay = timeDelay + 24*60*60*1000
 	}
 
-	// 7am shutoff
-	setTimeout(function() {
-		saveElectricity(1);
+	setTimeout(getTimeoutFunc(hour,saveElectricityFlag),timeDelay);
+}
 
-		setInterval(function() {
-			saveElectricity(1)
-		})
-	},timeDelay);
-
-	// 7pm turn on
-	setTimeout(function() {
-		saveElectricity(0);
-
-		setInterval(function() {
-			saveElectricity(0)
-		})
-	},timeDelay2)
+function getTimeoutFunc(hour,saveElectricityFlag) {	
+	return function() {
+		saveElectricity(saveElectricityFlag);
+		setTimer(hour,saveElectricityFlag);
+	}
 }
 
 function saveElectricity(activate) {
@@ -713,4 +717,4 @@ function saveElectricity(activate) {
 		sendCommand("setTemp",96,checkError); // Raise temperature back to 96 F to heat it back up during cheap time
 	}
 }
-*/
+
