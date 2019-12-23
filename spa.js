@@ -1,4 +1,9 @@
-/* Smart heating ?
+/*
+Balboa controller spa interface
+Uses RS485 protocol
+
+
+Smart heating ?
 
 Winter hours
 Time of use: Nov 1 to April 30
