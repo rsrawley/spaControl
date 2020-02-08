@@ -132,9 +132,6 @@ socket.on('error',function(error) {
 })
 
 
-// How to display data on the screen
-
-
 // Receive data websockets
 socket.on('data',function(data) {
 	//console.log(data);

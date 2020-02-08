@@ -383,6 +383,7 @@ function sendCommand(requested,param,callBackError) {
 //range is 50-80 for F, 10-26 for C in low range
 		if (param >= 50 && param <= 104) { // how to know if in low/high range???
 			content = decHex(param);
+			spa.lastChangeToTemp = new Date().getTime(); // Keep track of when temperature was changed (because of savElectricity() )
 		} else {
 			return callBackError("Error in " + requested);
 		}
@@ -667,6 +668,7 @@ setInterval(function() {
 		heatStatus = 1
 	}
 
+	// Time to nearest minute, spa temperature, outside temperature
 	graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(spa.CT,16),parseInt(spa.weather.temperature,10),heatStatus]);
 
 	// Keep only last 24 hours data (12 data points per hour and 24 h)
@@ -692,7 +694,7 @@ setInterval(function() {
 
 
 // Check for electricity savings time (7am to 7pm)
-setTimer(7,1); // Initial call to turn it on at 7am
+setTimer(2,1); // Initial call to turn it on at 2am
 setTimer(19,0); // Initial call to turn it off at 7pm
 
 function setTimer(hour,saveElectricityFlag) {
@@ -716,10 +718,13 @@ function getTimeoutFunc(hour,saveElectricityFlag) {
 }
 
 function saveElectricity(activate) {
-	if (activate == 1) {
-		sendCommand("setTemp",80,checkError); // Lower temperature to 80 F to save electricity
-	} else {
-		sendCommand("setTemp",96,checkError); // Raise temperature back to 96 F to heat it back up during cheap time
+	// More than 2 hours since last temperature change
+	if (new Date().getTime() - spa.lastChangeToTemp > 2 * 60 * 60 * 1000) {
+		if (activate == 1) {
+			sendCommand("setTemp",80,checkError); // Lower temperature to 80 F to save electricity
+		} else {
+			sendCommand("setTemp",96,checkError); // Raise temperature back to 96 F to heat it back up during cheap time
+		}
 	}
 }
 
