@@ -46,9 +46,29 @@ button {
 }
 
 
+/* Definitions for hourly weather grid */
+.wrapper {
+	width:400px;
+  height:250px;
+  border: 1px solid black;
+}
+
+
+/* Definitions for hourly weather grid */
+.grid-container-hourly {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  font-size: 0.6em;
+}
+.grid-container-hourly > * {
+  border: 1px solid black;
+  display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
 
 /* Definitions for radio toggle */
-
 .switch-field {
 	/*display: flex;
 	margin-bottom: 36px;*/

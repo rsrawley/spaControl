@@ -15,6 +15,7 @@
 	<!-- Load style sheet -->
 	<link rel="stylesheet" type="text/css" href="style.css">
 
+	<script src="setup.js"></script>
 	<script src="script.js" defer></script>
 </head>
 
@@ -25,12 +26,6 @@
 		Spa : <span id="CT"></span> <span class="degSymbol"></span> (<span id="HF"></span>)<br>
 		Set temperature: <button id="setMinus"></button> <span id="ST"></span> <span class="degSymbol"></span> <button id="setPlus"></button><br>
 		<!--Spa in on/spa is on hold (time left: 59 min)<br>-->
-	</div>
-	
-	<div class="large">
-		Weather<br>
-		Outdoor : <span id="temperature"></span> &deg;C (feels like <span id="feelsLike"></span> &deg;C)<br>
-		Wind: <span id="wind"></span> km/h (<span id="windDir"></span>)<br>
 	</div>
 
 	<div class="large">
@@ -45,6 +40,32 @@
 		Programs<br>
 		<button onclick="letsgo()">Going hot tubbin'</button> 
 		<button onclick="alldone()">Done hot tubbin'</button>
+	</div>
+	
+	<div class="large">
+		Weather<br>
+		Outdoor : <span id="temperature"></span> &deg;C (feels like <span id="feelsLike"></span> &deg;C)<br>
+		Wind: <span id="wind"></span> km/h (<span id="windDir"></span>), gusts <span id="windGust"></span> km/h<br>
+	
+		<div class="wrapper" id="windGauge">
+		</div>
+	</div>
+
+	<div class="large">
+		Weather forecast<br>
+		<div id="weatherForecast" class="grid-container-hourly">
+			<div>Hour</div>
+			<div>Icon</div>
+			<div>Temp</div>
+			<div>Feels</div>
+			<div>Wind</div>
+			<div>Dir</div>
+			<div>Gusts</div>
+			<div>POP</div>
+			<div>Rain</div>
+			<div>Snow</div>
+		</div>
+		<script>drawHourly();</script>
 	</div>
 
 	<div class="large">
@@ -83,12 +104,13 @@
 <br>
 <br>
 
-
+<!--
 	<div>
 		<button onclick="sendValue('test','10 bf 11 50 00')">test1</button>
 		<button onclick="sendValue('test','10 bf 23 09 00 0b 00 94 00 0c 00')">test2</button>
 		<button onclick="sendValue('test','10 bf 22 08 00 0c 00 94 00 0c 00')">test3</button>
 		<button onclick="sendValue('setABTemp','')">test4</button>
 	</div>
+-->
 </body>
 </html>

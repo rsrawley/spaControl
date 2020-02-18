@@ -136,8 +136,24 @@ socket.on('error',function(error) {
 socket.on('data',function(data) {
 	//console.log(data);
 	if (data.id == "weather") {
-		for (let key in data.value) {
-			document.getElementById(key).innerHTML = data.value[key]
+		// Current observations
+		for (let key in data.value.current) {
+			document.getElementById(key).innerHTML = data.value.current[key]
+console.log(key)
+		}
+		let wind = data.value.current.wind;
+		let windGust = data.value.current.windGust;
+		drawGauge("windGauge",0,30,[windGust,wind],["wind " + wind,"gust " + windGust,"km/h"]);
+
+		// Hourly forecast
+		for (let key in data.value.hourly) {
+			for (let i=0; i<6; i++) {
+				if (key != "icon") {
+					document.getElementById(key + i).innerHTML = data.value.hourly[key][i]
+				} else {
+					document.getElementById("icon" + i).src = data.value.hourly[key][i]
+				}
+			}
 		}
 
 	} else {
@@ -251,4 +267,133 @@ function drawChart(graphData) {
 
 	let chart = new google.visualization.ComboChart(document.getElementById('graph'))
   chart.draw(data, options)		
+}
+
+
+
+
+// hot tub is pointing at 320 deg -- take that into account for diagram of wind dir !
+
+
+
+function drawGauge(elementID,min,max,value,words) {
+	// also for reference : https://www.hongkiat.com/blog/svg-meter-gauge-tutorial/
+
+	// elementID : ID of HTML element in DOM
+	// min/max : minimum/maximum value of gauge
+	// value : array of actual reading on gauge (array for multiple values; listed from biggest to smallest)	
+	// words : array of lines of text to add in center of gauge
+	let width = 400, height = 400;
+	let circle = {"x" : width/2, "y" : height/2, "r" : 150};	// Centre x,y and radius
+
+		// Create the SVG element
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  
+  // Set width and height
+  setAttributes(svg, {"width" : width, "height" : height});
+ 
+  // Create grey background
+  svg.appendChild(traceArcPath(perc2color(0),1,circle.x,circle.y,circle.r,circle.x + circle.r,circle.y));
+
+  // Create colored arcs
+  for (let i=0; i < value.length; i++) {
+  	if (value[i] > max) { // Put at maximum if out of range
+  		value[i] = max
+  	}
+  	let percentage = value[i] / (max-min);
+		let angle = percentage * Math.PI - Math.PI/2; // Angle in radians (-90 to go from -90 to +90 rather than 0 to 180)
+	  let final = {
+	  	"x" : circle.r * Math.sin(angle) + circle.x,
+	  	"y" : circle.y - circle.r * Math.cos(angle)
+	  }
+
+	  let opacity = 1;
+	  if (i == 0) {
+	  	opacity = 0.3
+	  }
+
+	  svg.appendChild(traceArcPath(perc2color(percentage),opacity,circle.x,circle.y,circle.r,final.x,final.y));
+	}
+
+	// Add min and max
+	let params = [[circle.x - circle.r,min] , [circle.x + circle.r,max]]
+	for (let i=0; i<params.length; i++) {
+		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+		setAttributes(text,{
+			"text-anchor" : "middle",
+			"x" : params[i][0],
+			"y" : circle.y+30,
+		})
+		text.textContent = params[i][1];
+		text.style.fontSize = "0.5em";
+		svg.appendChild(text);
+	}
+
+	// Add text in centre of gauge
+	for (let i=0; i<words.length; i++) {
+		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+		setAttributes(text,{
+			"text-anchor" : "middle",
+			"x" : circle.x,
+			"y" : circle.y+i*40-50,
+		})
+		text.textContent = words[i];
+		text.style.fontSize = "0.8em";
+		svg.appendChild(text);
+	}
+
+	// Draw SVG
+  document.getElementById(elementID).innerHTML = "";
+  document.getElementById(elementID).appendChild(svg);
+}
+
+
+function setAttributes(object, attributes) {
+  // Set attributes for SVG graphics from a given attributes object rather than doing it stupidly one line at a time
+  for (let key in attributes) {
+    object.setAttribute(key,attributes[key])
+  }
+}
+
+
+function traceArcPath(colour,opacity,Cx,Cy,R,Ax,Ay) {
+	// Cx, Cy : circle centre coordinates
+	// R : radius
+	// Ax, Ay : final x and y values for arc
+	const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  
+  let arc = "M " + (Cx - R) + " " + Cy; // "Move to"  	
+  arc += "A " + R + " " + R;
+  arc += ",0,0,1,";
+  arc += Ax + " " + Ay;
+
+  setAttributes(path, {
+  	"d" : arc,
+  	"stroke" : colour,
+  	"fill" : "none",
+  	"stroke-width" : 60,
+  	"opacity" : opacity
+  })
+
+  return path
+}
+
+function perc2color(percentage) { // Percentage to color between green and red
+	let r, g, b = 0;
+
+	if (percentage == 0) { // Grey background
+		r = 127
+		g = 127
+		b = 127
+	} else 	if (percentage < 0.5) {
+		g = 255;
+		r = Math.round(5.1 * percentage*100);
+	} else {
+		r = 255;
+		g = Math.round(510 - 5.1 * percentage*100);
+	}
+
+	let h = r * 0x10000 + g * 0x100 + b * 0x1;
+
+	return '#' + ('000000' + h.toString(16)).slice(-6);
 }

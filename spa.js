@@ -73,17 +73,30 @@ fetchWeather(); // Initial call
 setInterval(fetchWeather, 5 * 60000); // Every 5 minutes after that
 
 function fetchWeather() {
-	request({"url": "http://192.168.1.58:3000/current", "json": true}, function (error, response, body) {
+	request({"url": "http://192.168.1.58:3000", "json": true}, function (error, response, body) {
 		if (!error && response.statusCode === 200) {
-			// If anything goes wrong with weather info lookup, do not update weather values
-			if (body.temperature != undefined && body.feelsLike != undefined && body.wind != undefined && body.windDir != undefined) {
-				spa.weather = {
-					"temperature": body.temperature,
-					"feelsLike": body.feelsLike,
-					"wind": body.wind,
-					"windDir": body.windDir
-				}
+			let abort = 0;
+			let weather = {};
+			let params = { // Weather parameters I want to pick up
+				current : ["temperature","feelsLike","wind","windDir","windGust"],
+				hourly : ["hour","icon","temperature","feelsLike","wind","windDir","windGust","POP","rain","snow"]
+			};
 
+			for (let key in params) {
+				weather[key] = {}; // Avoid undefined
+				for (let i=0; i<params[key].length; i++) {
+					// If anything goes wrong with weather info lookup, do not update weather values
+					if (body[key][params[key][i]] == undefined) {
+						abort = 1;
+						break
+					}
+
+					weather[key][params[key][i]] = body[key][params[key][i]];
+				}
+			}
+			
+			if (abort != 1) {
+				spa.weather = weather;
 				io.emit('data',{"id" : "weather", "value" : spa.weather}); // Send to all connected clients
 			}
 		}
@@ -668,7 +681,7 @@ setInterval(function() {
 		heatStatus = 1
 	}
 
-	// Time to nearest minute, spa temperature, outside temperature
+	// Time to nearest minute[0], spa temperature[1], outside temperature[2], heat status[3]
 	graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(spa.CT,16),parseInt(spa.weather.temperature,10),heatStatus]);
 
 	// Keep only last 24 hours data (12 data points per hour and 24 h)
@@ -677,6 +690,39 @@ setInterval(function() {
 	}
 
 	io.emit('graphData',graphData);
+	
+	// Find last time period heating was on
+	
+	
+	// Compute delta time and delta temp for heating rate
+	
+	// Find last time temperature was at highest and heating started OR time for lowest temperature started
+	let last = graphData.length-1;
+	let heatingPeriods = [];
+	let coolingPeriods = [];
+	
+	// Is it heating or not?
+	if (graphData[last][3] == 1) {
+		heatingPeriods.unshift(last)
+	} else {
+		coolingPeriods.unshift(last)
+	}
+	
+	for (let i=last-1; i>=0; i--) { // Go backwards through the array, skipping the very last one
+		// Check if heating and that we're still in a heating period
+		if (graphData[i][3] == 1 && heatingPeriods[0]<coolingPeriods[0]) {
+			heatingPeriods.unshift(i)
+			coolingPeriods.unshift(i+1)
+		} else {
+			heatingPeriods.unshift(i+1)
+			coolingPeriods.unshift(i)
+		}
+	}
+	
+	// Compute delta time and delta temp for cooling rate
+
+	// example : 
+	
 },5*60000);
 
 // Save to file every hour
@@ -728,3 +774,68 @@ function saveElectricity(activate) {
 	}
 }
 
+
+
+function polysolve(valeurs,degree) {
+  // Référence : https://arachnoid.com/sage/polynomial.html
+  let n = valeurs.length; // Nombre de données
+  
+  // Prendre les valeurs de x and la 1e colonne et y dans la 2e
+  let x = [], y = [];
+  for (let i=0; i<n; i++) {
+    x[i] = valeurs[i][0];
+    y[i] = valeurs[i][1];
+  }
+  
+  let m = []; // Matrice à résoudre
+  for (let r=0; r<=degree; r++) { // Row (r)
+    m[r] = []
+    
+    for (let c=0; c<=degree; c++) { // Column (c)
+      m[r][c] = 0
+      
+      for (let i=0; i<n; i++) { // Somme jusqu'à n-1
+        m[r][c] = m[r][c] + Math.pow(x[i],r+c) // x[i]^(r+c)
+      }
+    }
+  }
+  
+  // On rajoute la matrice à droite comme une colonne dans la matrice à gauche  
+  for (let r=0; r<=degree; r++) { // Row (r)
+    let somme = 0;
+    
+    for (let i=0; i<n; i++) { // Somme jusqu'à n-1
+      somme = somme + Math.pow(x[i],r)*y[i]
+    }
+    m[r].push(somme);
+  }
+  
+  // Il faut résoudre la matrice avec élimination Gauss-Jordan
+  for (let i=0; i<=degree; i++) {
+    let coeff = m[i][i];
+
+    for (let c=0; c<=degree+1; c++) { // Column (c)
+      m[i][c] = m[i][c] / coeff // Ajuster tous les coefficients pour avoir un 1 dans la colonne qu'on veut résoudre
+    }
+    
+    // Ajuster toute la matrice pour avoir des zéros partout dans la colonne, sauf celle qu'on vient d'ajuster ci-haut
+    for (let r=0; r<=degree; r++) {  // Row (r)
+      if (r != i) {
+        let coeff = m[r][i];
+        
+        for (let c=0; c<=degree+1; c++) { // Column (c)
+          m[r][c] = m[r][c] - coeff * m[i][c]
+        }        
+      }
+    }
+  }
+  
+  // Valeur de retour
+  let coefficients = [];
+  
+  for (let i=0; i<=degree; i++) {
+    coefficients.push(m[i][degree+1])
+  }
+	
+  return coefficients // Array qui contient les coefficients de x^0 à x^n
+}
