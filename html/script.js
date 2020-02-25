@@ -138,12 +138,15 @@ socket.on('data',function(data) {
 	if (data.id == "weather") {
 		// Current observations
 		for (let key in data.value.current) {
-			document.getElementById(key).innerHTML = data.value.current[key]
-console.log(key)
+			let id = document.getElementById(key);
+			if (id) {
+				document.getElementById(key).innerHTML = data.value.current[key]
+			}
 		}
-		let wind = data.value.current.wind;
-		let windGust = data.value.current.windGust;
-		drawGauge("windGauge",0,30,[windGust,wind],["wind " + wind,"gust " + windGust,"km/h"]);
+		let wind = Number(data.value.current.wind);
+		let windGust = Number(data.value.current.windGust);
+		let windAngle = ["N","NE","E","SE","S","SW","W","NW"].indexOf(data.value.current.windDir) * 360/8 + 40; // Offset of 40deg is relative to where hot tub is pointing compared to true north
+		yetAnotherWindGauge([windGust,wind,windAngle],["wind " + wind,"gust " + windGust,"km/h"]);
 
 		// Hourly forecast
 		for (let key in data.value.hourly) {
@@ -274,6 +277,212 @@ function drawChart(graphData) {
 
 // hot tub is pointing at 320 deg -- take that into account for diagram of wind dir !
 
+//yetAnotherWindGauge([25,10,45],["you","can do","this"])
+
+function yetAnotherWindGauge(values,words) {
+	// Size of SVG and max values to represent
+	let width = 400, height = 400, min = 0, max = 32;
+	let circle = {"x" : width/2, "y" : height/2, "r" : 150, "c" : 2*Math.PI*150};	// Centre x,y and radius and circumference
+
+	// Create the SVG element
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  
+  // Set width and height
+  setAttributes(svg, {"width" : width, "height" : height});
+
+  // Create grey background
+  let background = document.createElementNS("http://www.w3.org/2000/svg", "circle")
+  setAttributes(background,{
+  	"cx" : circle.x,
+  	"cy" : circle.y,
+  	"r" : circle.r,
+  	"stroke" : perc2color(0),
+  	"fill" : "none",
+  	"stroke-width" : 60
+	})
+  svg.appendChild(background);
+  
+  // Create colored arcs
+  let opacity = [0.3, 1]; // Opacity of arcs (first is gust, second is wind)
+  for (let i=0; i <=1; i++) {
+  	if (values[i] > max) { // Put at maximum if out of range
+  		values[i] = max
+  	}
+  	let percentage = values[i] / max;
+  	let arc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    setAttributes(arc,{
+    	"class" : "arc",
+	  	"cx" : circle.x,
+	  	"cy" : circle.y,
+	  	"r" : circle.r,
+	  	"stroke" : perc2color(percentage),
+	  	"fill" : "none",
+	  	"stroke-width" : 60,
+	  	"opacity" : opacity[i],
+	  	"stroke-linecap" : "round",
+	  	"stroke-dasharray" : `${circle.c*percentage}, ${circle.c}` // Dash length, space length
+		})
+		svg.appendChild(arc);
+	}
+
+	// Add text in centre of gauge
+	for (let i=0; i<words.length; i++) {
+		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+		setAttributes(text,{
+			"x" : circle.x,
+			"y" : circle.y+i*40-30,
+			"text-anchor" : "middle"
+		})
+		text.textContent = words[i];
+		text.style.fontSize = "0.8em";
+		svg.appendChild(text);
+	}
+
+	// Add wind direction pointer
+	let windVane = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+	windVane.id = "windVane";
+	setAttributes(windVane,{
+		"points" : `${circle.x-10},${circle.y-circle.r-45} ${circle.x+10},${circle.y-circle.r-45} ${circle.x},${circle.y-circle.r-5}`,
+	})
+	windVane.style.fill = "red";
+	windVane.style.transform = `rotate(${values[2]}deg)`; // Rotate it according to wind direction
+	svg.appendChild(windVane);
+
+	// North direction (text "N")
+	let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+	setAttributes(text,{
+		"x" : 345,
+		"y" : 41,
+		"text-anchor" : "middle"
+	})
+	text.textContent = "N";
+	text.style.fontSize = "0.8em";
+	svg.appendChild(text);
+
+	// Draw SVG
+  document.getElementById("windGauge").innerHTML = "";
+  document.getElementById("windGauge").appendChild(svg);
+}
+
+function drawCircleGauge(elementID,values,words) {
+values = [10,5,0]//delete this line!
+
+	// also for reference : https://www.hongkiat.com/blog/svg-meter-gauge-tutorial/
+
+	// elementID : ID of HTML element in DOM
+	// min/max : minimum/maximum value of gauge
+	// value : array of actual reading on gauge (array for multiple values; listed from biggest to smallest)	
+	// words : array of lines of text to add in center of gauge
+	let width = 400, height = 400, min = 0, max = 30;
+	let circle = {"x" : width/2, "y" : height/2, "r" : 150};	// Centre x,y and radius
+
+		// Create the SVG element
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  
+  // Set width and height
+  setAttributes(svg, {"width" : width, "height" : height});
+ 
+  // Create grey background
+  for (let i=90; i<270; i=i+5) {
+  	break
+  	setTimeout(function(){
+  svg.appendChild(traceArc(perc2color(0),1,circle.x,circle.y,circle.r,0,i/180*Math.PI));
+
+
+  	},(i-90)/5*1000)
+  }
+  svg.appendChild(traceArc(perc2color(0),1,circle.x,circle.y,circle.r,0,200/180*Math.PI));
+  document.getElementById(elementID).appendChild(svg); // delete this line
+return
+
+  // Create colored arcs
+  let opacity = [1, 0.3]; // Opacity of arcs (first is gust, second is wind)
+  for (let i=0; i < values.length; i++) {
+  	if (values[i] > max) { // Put at maximum if out of range
+  		values[i] = max
+  	}
+  	let percentage = values[i] / (max-min);
+console.log(min,max,values[i],percentage);
+		let angle = percentage * 2 * Math.PI; // 2 * PI is 360 degrees
+console.log(percentage,angle,"percentage and angle")
+	  svg.appendChild(traceArc(perc2color(percentage),opacity,circle.x,circle.y,circle.r,0,angle));
+	}
+
+/*	// Add min and max
+	let params = [[circle.x - circle.r,min] , [circle.x + circle.r,max]]
+	for (let i=0; i<params.length; i++) {
+		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+		setAttributes(text,{
+			"text-anchor" : "middle",
+			"x" : params[i][0],
+			"y" : circle.y+30,
+		})
+		text.textContent = params[i][1];
+		text.style.fontSize = "0.5em";
+		svg.appendChild(text);
+	}
+*/
+
+	// Add text in centre of gauge
+	for (let i=0; i<words.length; i++) {
+		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+		setAttributes(text,{
+			"text-anchor" : "middle",
+			"x" : circle.x,
+			"y" : circle.y+i*40-50,
+		})
+		text.textContent = words[i];
+		text.style.fontSize = "0.8em";
+		svg.appendChild(text);
+	}
+
+	// Draw SVG
+  document.getElementById(elementID).innerHTML = "";
+  document.getElementById(elementID).appendChild(svg);
+
+	//document.getElementById("windVane").style.transform = "rotate("+ windAngle +"deg)";
+}
+
+
+function polarToCartesian(centerX, centerY, radius, angle) {
+  angle = angle - Math.PI/2; // -90deg makes arc start on the left
+console.log(angle*180/Math.PI)
+  return {
+    "x": centerX + (radius * Math.sin(angle)),
+    "y": centerY - (radius * Math.cos(angle))
+  };
+}
+
+
+function traceArc(colour, opacity, x, y, radius, startAngle, endAngle){
+console.log(startAngle*180/Math.PI,endAngle*180/Math.PI)
+  let start = polarToCartesian(x, y, radius, startAngle);
+  let end = polarToCartesian(x, y, radius, endAngle);
+
+  let largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
+  //let largeArcFlag = 0; // dlete this if not necessary
+  let sweepFlag = 1 - largeArcFlag
+
+  largeArcFlag=1,sweepFlag=1
+
+console.log("start.x,start.y,radius,largeArcFlag,end.x,end.y");
+console.log(start.x,start.y,radius,largeArcFlag,end.x,end.y)
+
+  let d = `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} ${sweepFlag} ${end.x} ${end.y}`;
+
+console.log(d,colour,opacity,"d,colour,opacity")
+
+	const path = document.createElementNS("http://www.w3.org/2000/svg", "path");  
+  setAttributes(path, {
+  	"d" : d,
+  	"stroke" : colour,
+  	"fill" : "none",
+  	"stroke-width" : 60,
+  	"opacity" : opacity
+  })
+
+  return path  
+}
 
 
 function drawGauge(elementID,min,max,value,words) {

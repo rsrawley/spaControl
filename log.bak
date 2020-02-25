@@ -1,0 +1,15 @@
+/home/pi/spaControl/spa.js:89
+					if (body[key][params[key][i]] == undefined) {
+					        ^
+
+TypeError: Cannot read property 'current' of undefined
+    at Request._callback (/home/pi/spaControl/spa.js:89:14)
+    at Request.self.callback (/home/pi/node_modules/request/request.js:185:22)
+    at Request.emit (events.js:198:13)
+    at Request.<anonymous> (/home/pi/node_modules/request/request.js:1161:10)
+    at Request.emit (events.js:198:13)
+    at IncomingMessage.<anonymous> (/home/pi/node_modules/request/request.js:1083:12)
+    at Object.onceWrapper (events.js:286:20)
+    at IncomingMessage.emit (events.js:203:15)
+    at endReadableNT (_stream_readable.js:1145:12)
+    at process._tickCallback (internal/process/next_tick.js:63:19)

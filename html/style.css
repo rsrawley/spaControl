@@ -49,8 +49,19 @@ button {
 /* Definitions for hourly weather grid */
 .wrapper {
 	width:400px;
-  height:250px;
+  height:400px;
   border: 1px solid black;
+}
+
+
+/* Definitions for wind meter */
+.arc {
+	transform: rotate(180deg);
+  transform-origin: center center;
+}
+
+#windVane {
+  transform-origin: center center;
 }
 
 
