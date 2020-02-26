@@ -1,96 +1,3 @@
-// Reference for radio toggle CSS : https://codepen.io/JiveDig/pen/jbdJXR/
-
-// Set up radio toggle buttons
-let radioToggles = {
-	"tempScale" : {
-		"display" : "Temperature scale: ",
-		"id" : ["TS_0", "TS_1"],
-		"label" : ["&deg;F","&deg;C"],
-		"func" : function() {
-			if (document.getElementById("TS_0").checked) {
-				sendValue('setTempScale','1')
-			} else {
-				sendValue('setTempScale','0')
-			}
-		}
-	},
-
-	"reminders" : {
-		"display" : "Reminders: ",
-		"id" : ["RM_0", "RM_1"],
-		"label" : ["ON","OFF"],
-		"func" : function() {
-			if (document.getElementById("RM_0").checked) {
-				sendValue('setReminders','1')
-			} else {
-				sendValue('setReminders','0')
-			}
-		}
-	},
-
-	"M8" : {
-		"display" : "M8: ",
-		"id" : ["M8_1", "M8_0"],
-		"label" : ["ON","OFF"],
-		"func" : function() {
-			if (document.getElementById("M8_0").checked) {
-				sendValue('setM8','1')
-			} else {
-				sendValue('setM8','0')
-			}
-		}
-	},
-
-	"timeFormat" : {
-		"display" : "Time format: ",
-		"id" : ["TF_0", "TF_1"],
-		"label" : ["12h","24h"],
-		"func" : function() {
-			if (document.getElementById("TF_0").checked) {
-				sendValue('setTimeFormat','1')
-			} else {
-				sendValue('setTimeFormat','0')
-			}
-		}
-	},
-
-	"tempRange" : {
-		"display" : "Temperature range: ",
-		"id" : ["HF_0", "HF_1"], // this is not clear if this is right code
-		"label" : ["HIGH","LOW"],
-		"func" : function() {sendValue('toggleItem','tempRange')}
-	},
-
-	"cleaningCycle" : {
-		"display" : "Cleaning cycle: ",
-		"id" : ["CC_0","CC_1","CC_2","CC_3","CC_4","CC_5","CC_6","CC_7","CC_8",], // this is not clear if this is right code
-		"label" : ["OFF","0.5 h","1 h","1.5 h","2 h","2.5 h","3 h","3.5 h","4 h","4.5 h"]
-	}
-};
-
-for (let key in radioToggles) {
-	let div = document.createElement("div");
-	div.className = "switch-field"; // Apply CSS
-	div.innerHTML = radioToggles[key].display;
-
-	for (let i=0; i<radioToggles[key].id.length; i++) {
-		let radioToggleswitch = document.createElement("input");
-		radioToggleswitch.type = "radio";
-		radioToggleswitch.id = radioToggles[key].id[i];
-		radioToggleswitch.name = key + "_name"; // They all need the same name
-		radioToggleswitch.disabled = true; // So that clicking doesn't change display, only input from hot tub
-		div.appendChild(radioToggleswitch);
-
-		let label = document.createElement("label");
-		label.htmlFor = radioToggles[key].id[i];
-		label.innerHTML = radioToggles[key].label[i];
-		label.onclick = radioToggles[key].func;
-		div.appendChild(label);
-	}
-
-	document.getElementById("settingsRadioButtons").appendChild(div);
-}
-
 // Add event listeners
 // Set temperature buttons
 document.getElementById("setMinus").onclick = function() {sendValue('setTemp',Number(document.getElementById("ST").innerHTML) - 1)};
@@ -143,10 +50,15 @@ socket.on('data',function(data) {
 				document.getElementById(key).innerHTML = data.value.current[key]
 			}
 		}
+
+		// Temperature gauge values
+		temperatureGauge(Number(data.value.current.temperature),Number(data.value.current.feelsLike),Number(data.value.current.low),Number(data.value.current.high))
+
+		// Wind gauge values
 		let wind = Number(data.value.current.wind);
 		let windGust = Number(data.value.current.windGust);
 		let windAngle = ["N","NE","E","SE","S","SW","W","NW"].indexOf(data.value.current.windDir) * 360/8 + 40; // Offset of 40deg is relative to where hot tub is pointing compared to true north
-		yetAnotherWindGauge([windGust,wind,windAngle],["wind " + wind,"gust " + windGust,"km/h"]);
+		windGauge([windGust,wind,windAngle],["wind " + wind,"gust " + windGust,"km/h"]);
 
 		// Hourly forecast
 		for (let key in data.value.hourly) {
@@ -273,13 +185,196 @@ function drawChart(graphData) {
 }
 
 
+function temperatureGauge(temperature,feelsLike,low,high) {
+	// Size of SVG and max values to represent
+	let width = 600, height = 400;
+
+	// Create the SVG element
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  
+  // Set width and height
+  setAttributes(svg, {"width" : width, "height" : height});
 
 
-// hot tub is pointing at 320 deg -- take that into account for diagram of wind dir !
+  // Sets definitions for rainbow gradient
+  let defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+ 	svg.appendChild(defs);
+  let rainbowGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+  rainbowGradient.id = "rainbowGradient";
+  defs.appendChild(rainbowGradient);
 
-//yetAnotherWindGauge([25,10,45],["you","can do","this"])
+	let rainbow=["238,130,238","75,0,130","71,174,230","0,255,0","255,255,0","255,127,0","255,0,0"]
+  for (let i=0; i<rainbow.length; i++) {
+  	let stop = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+  	rainbowGradient.appendChild(stop);
+ 	  setAttributes(stop,{
+ 	  	"offset" : `${i*100/(rainbow.length-1)}%`,
+ 	  	"stop-color" : `rgb(${rainbow[i]})`
+ 	  })
+  }
 
-function yetAnotherWindGauge(values,words) {
+  let highLowGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+  highLowGradient.id = "highLowGradient";
+  defs.appendChild(highLowGradient);
+
+	let highLow=["0,0,255","255,0,0"];
+  for (let i=0; i<highLow.length; i++) {
+  	let stop = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+  	highLowGradient.appendChild(stop);
+ 	  setAttributes(stop,{
+ 	  	"offset" : `${i*100/(highLow.length-1)}%`,
+ 	  	"stop-color" : `rgb(${highLow[i]})`
+ 	  })
+  }
+
+  // grey line background
+  // temperature gradient line at the top
+  // feelslike solid at the bottom
+  // low and high at either end
+  // temp reading above top
+  // feelslike reading bottom
+  //                          7
+  // LOW                                   HIGH
+  //                   -3
+
+  // Draw temperature
+
+//function temperatureGauge(temperature,feelsLike,low,high) {
+
+  let min = -35, max = 35; // Minimum and maximum temperatures to be represented on the scale
+  let range = max - min - 1; // -1 because we're counting the min as a displayable value
+
+ 	let temps = [temperature,temperature,feelsLike];
+ 	// Draw the two temperature scales
+ 	for (let i=0; i<temps.length; i++) {
+		// Different ways of calculating black bar mask and different name for gradient for high/low bar
+		let x2, gradient;
+		if (i == 1) {
+			x2 = (temps[i] - low)/(high-low-1) * 500;
+			gradient = "highLowGradient";
+		} else {
+			x2 = (temps[i] - min)/range * 500;
+			gradient = "rainbowGradient";
+		}
+
+ 		// Draw full rainbow line
+  	let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+	  setAttributes(line,{
+	  	"x1" : 100,
+	  	"y1" : 120+i*80,
+	  	"x2" : 500,
+	  	"y2" : 120.001+i*80, // .001 otherwise horizontal gradient line doesn't show
+	  	"stroke": `url(#${gradient})`,
+	  	"stroke-width" : 60
+		})
+		svg.appendChild(line);
+
+		// Add temperature label if not high/low bar
+		if (i != 1) {
+			let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+			setAttributes(text,{
+				"x" : x2,
+				"y" : 70+i*130,
+				"text-anchor" : "middle",
+				"fill" : "white",
+				"dominant-baseline" : "central"
+			})
+			text.textContent = temps[i] + " °C";
+			text.style.fontSize = "0.5em";
+			svg.appendChild(text);
+		}
+
+		// Hide the part that is beyond the temperature
+  	let black = document.createElementNS("http://www.w3.org/2000/svg", "line");
+	  setAttributes(black,{
+	  	"x1" : 500,
+	  	"y1" : 120+i*80,
+	  	"x2" : x2,
+	  	"y2" : 120.001+i*80, // .001 otherwise horizontal gradient line doesn't show
+	  	"stroke": "black",
+	  	"stroke-width" : 60,
+	  	"opacity" : 0.75
+		})
+		svg.appendChild(black);
+	}
+
+	// Add high and low bar
+	let minMax = [[low,"end","blue"] , [high,"start","red"]];
+	for (let i=0; i<=1; i++) {
+		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+		setAttributes(text,{
+			"x" : 90 + 420 * i,
+			"y" : 200,
+			"text-anchor" : minMax[i][1],
+			"fill" : minMax[i][2],
+			"dominant-baseline" : "central"
+		})
+		text.textContent = minMax[i][0] + " °C";
+		text.style.fontSize = "1em";
+		svg.appendChild(text);
+	}
+
+	// Add labels "outdoor" and "feels like"
+	let words = ["Outdoor", "Feels like"];
+	for (let i=0; i<=1; i++) {
+		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+		setAttributes(text,{
+			"x" : 300,
+			"y" : 205 - 170 * (-1)**i,
+			"text-anchor" : "middle",
+			"dominant-baseline" : "middle"
+		})
+		text.textContent = words[i];
+		text.style.fontSize = "0.8em";
+		svg.appendChild(text);
+	}
+
+  document.getElementById("temperatureGauge").innerHTML = "";
+  document.getElementById("temperatureGauge").appendChild(svg);
+}
+
+// google search : how to get rgb color of linear gradient svg js
+// https://stackoverflow.com/questions/23276926/how-to-get-color-of-svg-rainbowGradient-at-specific-position
+
+//setRGB()
+// Gives a color based on a given temperature for feels like temperature
+function setRGB(temperature) { // delete this entire function !!!!!!!!!!!!
+	const lowestTemp = -35, highestTemp = 40;
+	let range = highestTemp - lowestTemp;
+
+	// 3 sine waves 120 degrees out of phase
+	let red   = Math.floor(Math.sin(2*Math.PI*(temperature/(range+1) + 0/3 + 0.8)) * 127) + 128;
+	let	green = Math.floor(Math.sin(2*Math.PI*(temperature/(range+1) + 1/3 + 0.8)) * 127) + 128;
+	let	blue  = Math.floor(Math.sin(2*Math.PI*(temperature/(range+1) + 2/3 + 0.8)) * 127) + 128;
+
+//	return "#" + red.toString(16).padStart(2, '0') + green.toString(16).padStart(2, '0') + blue.toString(16).padStart(2, '0')
+
+
+	div=document.getElementById('test')
+	let phase = 0.8;
+
+	for (let i=-30; i<=highestTemp; i=i+2) {
+		red   = Math.floor(Math.sin(2*Math.PI*(i/(range+1) + 0/3 + phase)) * 127) + 128; // 3 sine waves 120 degrees out of phase
+		green = Math.floor(Math.sin(2*Math.PI*(i/(range+1) + 1/3 + phase)) * 127) + 128;
+		blue  = Math.floor(Math.sin(2*Math.PI*(i/(range+1) + 2/3 + phase)) * 127) + 128;
+
+	  let span = document.createElement("span")
+	  span.innerHTML=String.fromCharCode(95+i);
+	  span.style.fontSize="15px"
+	  span.style.backgroundColor = "#"+red.toString(16).padStart(2, '0')+green.toString(16).padStart(2, '0')+blue.toString(16).padStart(2, '0')
+	  //console.log(String.fromCharCode(95+i),red,green,blue,span.style.backgroundColor)
+	  div.appendChild(span)
+	}
+
+
+}
+
+
+
+
+
+
+function windGauge(values,words) {
 	// Size of SVG and max values to represent
 	let width = 400, height = 400, min = 0, max = 32;
 	let circle = {"x" : width/2, "y" : height/2, "r" : 150, "c" : 2*Math.PI*150};	// Centre x,y and radius and circumference
@@ -297,13 +392,14 @@ function yetAnotherWindGauge(values,words) {
   	"cy" : circle.y,
   	"r" : circle.r,
   	"stroke" : perc2color(0),
+  	"opacity" : 0.7,
   	"fill" : "none",
   	"stroke-width" : 60
 	})
   svg.appendChild(background);
   
   // Create colored arcs
-  let opacity = [0.3, 1]; // Opacity of arcs (first is gust, second is wind)
+  let opacity = [1, 1]; // Opacity of arcs (first is gust, second is wind)
   for (let i=0; i <=1; i++) {
   	if (values[i] > max) { // Put at maximum if out of range
   		values[i] = max
@@ -364,198 +460,6 @@ function yetAnotherWindGauge(values,words) {
   document.getElementById("windGauge").appendChild(svg);
 }
 
-function drawCircleGauge(elementID,values,words) {
-values = [10,5,0]//delete this line!
-
-	// also for reference : https://www.hongkiat.com/blog/svg-meter-gauge-tutorial/
-
-	// elementID : ID of HTML element in DOM
-	// min/max : minimum/maximum value of gauge
-	// value : array of actual reading on gauge (array for multiple values; listed from biggest to smallest)	
-	// words : array of lines of text to add in center of gauge
-	let width = 400, height = 400, min = 0, max = 30;
-	let circle = {"x" : width/2, "y" : height/2, "r" : 150};	// Centre x,y and radius
-
-		// Create the SVG element
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  
-  // Set width and height
-  setAttributes(svg, {"width" : width, "height" : height});
- 
-  // Create grey background
-  for (let i=90; i<270; i=i+5) {
-  	break
-  	setTimeout(function(){
-  svg.appendChild(traceArc(perc2color(0),1,circle.x,circle.y,circle.r,0,i/180*Math.PI));
-
-
-  	},(i-90)/5*1000)
-  }
-  svg.appendChild(traceArc(perc2color(0),1,circle.x,circle.y,circle.r,0,200/180*Math.PI));
-  document.getElementById(elementID).appendChild(svg); // delete this line
-return
-
-  // Create colored arcs
-  let opacity = [1, 0.3]; // Opacity of arcs (first is gust, second is wind)
-  for (let i=0; i < values.length; i++) {
-  	if (values[i] > max) { // Put at maximum if out of range
-  		values[i] = max
-  	}
-  	let percentage = values[i] / (max-min);
-console.log(min,max,values[i],percentage);
-		let angle = percentage * 2 * Math.PI; // 2 * PI is 360 degrees
-console.log(percentage,angle,"percentage and angle")
-	  svg.appendChild(traceArc(perc2color(percentage),opacity,circle.x,circle.y,circle.r,0,angle));
-	}
-
-/*	// Add min and max
-	let params = [[circle.x - circle.r,min] , [circle.x + circle.r,max]]
-	for (let i=0; i<params.length; i++) {
-		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-		setAttributes(text,{
-			"text-anchor" : "middle",
-			"x" : params[i][0],
-			"y" : circle.y+30,
-		})
-		text.textContent = params[i][1];
-		text.style.fontSize = "0.5em";
-		svg.appendChild(text);
-	}
-*/
-
-	// Add text in centre of gauge
-	for (let i=0; i<words.length; i++) {
-		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-		setAttributes(text,{
-			"text-anchor" : "middle",
-			"x" : circle.x,
-			"y" : circle.y+i*40-50,
-		})
-		text.textContent = words[i];
-		text.style.fontSize = "0.8em";
-		svg.appendChild(text);
-	}
-
-	// Draw SVG
-  document.getElementById(elementID).innerHTML = "";
-  document.getElementById(elementID).appendChild(svg);
-
-	//document.getElementById("windVane").style.transform = "rotate("+ windAngle +"deg)";
-}
-
-
-function polarToCartesian(centerX, centerY, radius, angle) {
-  angle = angle - Math.PI/2; // -90deg makes arc start on the left
-console.log(angle*180/Math.PI)
-  return {
-    "x": centerX + (radius * Math.sin(angle)),
-    "y": centerY - (radius * Math.cos(angle))
-  };
-}
-
-
-function traceArc(colour, opacity, x, y, radius, startAngle, endAngle){
-console.log(startAngle*180/Math.PI,endAngle*180/Math.PI)
-  let start = polarToCartesian(x, y, radius, startAngle);
-  let end = polarToCartesian(x, y, radius, endAngle);
-
-  let largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
-  //let largeArcFlag = 0; // dlete this if not necessary
-  let sweepFlag = 1 - largeArcFlag
-
-  largeArcFlag=1,sweepFlag=1
-
-console.log("start.x,start.y,radius,largeArcFlag,end.x,end.y");
-console.log(start.x,start.y,radius,largeArcFlag,end.x,end.y)
-
-  let d = `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} ${sweepFlag} ${end.x} ${end.y}`;
-
-console.log(d,colour,opacity,"d,colour,opacity")
-
-	const path = document.createElementNS("http://www.w3.org/2000/svg", "path");  
-  setAttributes(path, {
-  	"d" : d,
-  	"stroke" : colour,
-  	"fill" : "none",
-  	"stroke-width" : 60,
-  	"opacity" : opacity
-  })
-
-  return path  
-}
-
-
-function drawGauge(elementID,min,max,value,words) {
-	// also for reference : https://www.hongkiat.com/blog/svg-meter-gauge-tutorial/
-
-	// elementID : ID of HTML element in DOM
-	// min/max : minimum/maximum value of gauge
-	// value : array of actual reading on gauge (array for multiple values; listed from biggest to smallest)	
-	// words : array of lines of text to add in center of gauge
-	let width = 400, height = 400;
-	let circle = {"x" : width/2, "y" : height/2, "r" : 150};	// Centre x,y and radius
-
-		// Create the SVG element
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  
-  // Set width and height
-  setAttributes(svg, {"width" : width, "height" : height});
- 
-  // Create grey background
-  svg.appendChild(traceArcPath(perc2color(0),1,circle.x,circle.y,circle.r,circle.x + circle.r,circle.y));
-
-  // Create colored arcs
-  for (let i=0; i < value.length; i++) {
-  	if (value[i] > max) { // Put at maximum if out of range
-  		value[i] = max
-  	}
-  	let percentage = value[i] / (max-min);
-		let angle = percentage * Math.PI - Math.PI/2; // Angle in radians (-90 to go from -90 to +90 rather than 0 to 180)
-	  let final = {
-	  	"x" : circle.r * Math.sin(angle) + circle.x,
-	  	"y" : circle.y - circle.r * Math.cos(angle)
-	  }
-
-	  let opacity = 1;
-	  if (i == 0) {
-	  	opacity = 0.3
-	  }
-
-	  svg.appendChild(traceArcPath(perc2color(percentage),opacity,circle.x,circle.y,circle.r,final.x,final.y));
-	}
-
-	// Add min and max
-	let params = [[circle.x - circle.r,min] , [circle.x + circle.r,max]]
-	for (let i=0; i<params.length; i++) {
-		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-		setAttributes(text,{
-			"text-anchor" : "middle",
-			"x" : params[i][0],
-			"y" : circle.y+30,
-		})
-		text.textContent = params[i][1];
-		text.style.fontSize = "0.5em";
-		svg.appendChild(text);
-	}
-
-	// Add text in centre of gauge
-	for (let i=0; i<words.length; i++) {
-		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-		setAttributes(text,{
-			"text-anchor" : "middle",
-			"x" : circle.x,
-			"y" : circle.y+i*40-50,
-		})
-		text.textContent = words[i];
-		text.style.fontSize = "0.8em";
-		svg.appendChild(text);
-	}
-
-	// Draw SVG
-  document.getElementById(elementID).innerHTML = "";
-  document.getElementById(elementID).appendChild(svg);
-}
-
 
 function setAttributes(object, attributes) {
   // Set attributes for SVG graphics from a given attributes object rather than doing it stupidly one line at a time
@@ -565,35 +469,11 @@ function setAttributes(object, attributes) {
 }
 
 
-function traceArcPath(colour,opacity,Cx,Cy,R,Ax,Ay) {
-	// Cx, Cy : circle centre coordinates
-	// R : radius
-	// Ax, Ay : final x and y values for arc
-	const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  
-  let arc = "M " + (Cx - R) + " " + Cy; // "Move to"  	
-  arc += "A " + R + " " + R;
-  arc += ",0,0,1,";
-  arc += Ax + " " + Ay;
-
-  setAttributes(path, {
-  	"d" : arc,
-  	"stroke" : colour,
-  	"fill" : "none",
-  	"stroke-width" : 60,
-  	"opacity" : opacity
-  })
-
-  return path
-}
-
 function perc2color(percentage) { // Percentage to color between green and red
 	let r, g, b = 0;
 
 	if (percentage == 0) { // Grey background
-		r = 127
-		g = 127
-		b = 127
+		r = g = b = 0;
 	} else 	if (percentage < 0.5) {
 		g = 255;
 		r = Math.round(5.1 * percentage*100);

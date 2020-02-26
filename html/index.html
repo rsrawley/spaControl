@@ -15,7 +15,7 @@
 	<!-- Load style sheet -->
 	<link rel="stylesheet" type="text/css" href="style.css">
 
-	<script src="setup.js"></script>
+	<script src="setup.js" defer></script>
 	<script src="script.js" defer></script>
 </head>
 
@@ -44,10 +44,11 @@
 	
 	<div class="large">
 		Weather<br>
-		Outdoor : <span id="temperature"></span> &deg;C (feels like <span id="feelsLike"></span> &deg;C)<br>
+		<!--Outdoor : <span id="temperature"></span> &deg;C (feels like <span id="feelsLike"></span> &deg;C)<br>-->
 		<!--Wind: <span id="wind"></span> km/h (<span id="windDir"></span>), gusts <span id="windGust"></span> km/h<br>-->
-	
-		<div class="wrapper" id="windGauge"></div>
+		<div id="temperatureGauge"></div>
+		<div id="windGauge"></div>
+		<div id='test'></div>
 	</div>
 
 	<div class="large">
@@ -64,7 +65,6 @@
 			<div>Rain</div>
 			<div>Snow</div>
 		</div>
-		<script>drawHourly();</script>
 	</div>
 
 	<div class="large">

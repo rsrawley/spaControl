@@ -78,7 +78,7 @@ function fetchWeather() {
 			let abort = 0;
 			let weather = {};
 			let params = { // Weather parameters I want to pick up
-				current : ["temperature","feelsLike","wind","windDir","windGust"],
+				current : ["temperature","feelsLike","wind","windDir","windGust","high","low"],
 				hourly : ["hour","icon","temperature","feelsLike","wind","windDir","windGust","POP","rain","snow"]
 			};
 
