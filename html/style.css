@@ -47,11 +47,17 @@ button {
 
 
 /* Definitions for hourly weather grid */
-#temperatureGauge {
-	border: solid black 1px;
+.grid-container-weather {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
 }
 
-
+.grid-container-weather > div {
+	border: 1px solid black;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
 
 /* Definitions for wind meter */
 .arc {

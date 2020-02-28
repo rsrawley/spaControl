@@ -187,20 +187,21 @@ function drawChart(graphData) {
 
 function temperatureGauge(temperature,feelsLike,low,high) {
 	// Size of SVG and max values to represent
-	let width = 600, height = 400;
+	let width = 440, height = 480;
 
 	// Create the SVG element
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   
   // Set width and height
   setAttributes(svg, {"width" : width, "height" : height});
-
+  //setAttributes(svg, {"viewBox" : "-80 0 600 400"});
 
   // Sets definitions for rainbow gradient
   let defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
  	svg.appendChild(defs);
   let rainbowGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
   rainbowGradient.id = "rainbowGradient";
+  setAttributes(rainbowGradient,{"x1":"0%" , "y1":"100%" , "x2":"0%" , "y2":"0%"});
   defs.appendChild(rainbowGradient);
 
 	let rainbow=["238,130,238","75,0,130","71,174,230","0,255,0","255,255,0","255,127,0","255,0,0"]
@@ -215,6 +216,7 @@ function temperatureGauge(temperature,feelsLike,low,high) {
 
   let highLowGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
   highLowGradient.id = "highLowGradient";
+  setAttributes(highLowGradient,{"x1":"0%" , "y1":"100%" , "x2":"0%" , "y2":"0%"});
   defs.appendChild(highLowGradient);
 
 	let highLow=["0,0,255","255,0,0"];
@@ -227,108 +229,152 @@ function temperatureGauge(temperature,feelsLike,low,high) {
  	  })
   }
 
-  // grey line background
-  // temperature gradient line at the top
-  // feelslike solid at the bottom
-  // low and high at either end
-  // temp reading above top
-  // feelslike reading bottom
-  //                          7
-  // LOW                                   HIGH
-  //                   -3
-
-  // Draw temperature
-
-//function temperatureGauge(temperature,feelsLike,low,high) {
-
   let min = -35, max = 35; // Minimum and maximum temperatures to be represented on the scale
-  let range = max - min - 1; // -1 because we're counting the min as a displayable value
+  let range = max - min;
 
- 	let temps = [temperature,temperature,feelsLike];
- 	// Draw the two temperature scales
+	// Draw solid black background
+	let solid = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  setAttributes(solid,{
+  	"x" : 110,
+  	"y" : 40,
+  	"width" : 100,
+  	"height" : 400,
+  	"fill": "black"
+	})
+	svg.appendChild(solid);
+	
+	let temps = [temperature,feelsLike];
  	for (let i=0; i<temps.length; i++) {
-		// Different ways of calculating black bar mask and different name for gradient for high/low bar
-		let x2, gradient;
-		if (i == 1) {
-			x2 = (temps[i] - low)/(high-low-1) * 500;
-			gradient = "highLowGradient";
-		} else {
-			x2 = (temps[i] - min)/range * 500;
-			gradient = "rainbowGradient";
-		}
+		// In case temperatures out of bounds
+	  let percent = (temps[i] - min) / range;
+  	if (temps[i] > max) {
+	  	percent = 1
+	  } else if (temps[i] < min) {
+	  	percent = 0
+	  }
 
- 		// Draw full rainbow line
-  	let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+		// Draw full rainbow line
+		let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
 	  setAttributes(line,{
-	  	"x1" : 100,
-	  	"y1" : 120+i*80,
-	  	"x2" : 500,
-	  	"y2" : 120.001+i*80, // .001 otherwise horizontal gradient line doesn't show
-	  	"stroke": `url(#${gradient})`,
-	  	"stroke-width" : 60
+	  	"x1" : 135+i*50,
+	  	"y1" : 40,
+	  	"x2" : 135+i*50+0.001, // .001 otherwise horizontal gradient line doesn't show
+	  	"y2" : 440,
+	  	"stroke": "url(#rainbowGradient)",
+	  	"stroke-width" : 50,
+	  	"stroke-dasharray" : "5,2",
+	  	"opacity" : [1,0.8][i]
 		})
 		svg.appendChild(line);
-
-		// Add temperature label if not high/low bar
-		if (i != 1) {
-			let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-			setAttributes(text,{
-				"x" : x2,
-				"y" : 70+i*130,
-				"text-anchor" : "middle",
-				"fill" : "white",
-				"dominant-baseline" : "central"
-			})
-			text.textContent = temps[i] + " °C";
-			text.style.fontSize = "0.5em";
-			svg.appendChild(text);
-		}
 
 		// Hide the part that is beyond the temperature
   	let black = document.createElementNS("http://www.w3.org/2000/svg", "line");
 	  setAttributes(black,{
-	  	"x1" : 500,
-	  	"y1" : 120+i*80,
-	  	"x2" : x2,
-	  	"y2" : 120.001+i*80, // .001 otherwise horizontal gradient line doesn't show
+	  	"x1" : 135+i*50,
+	  	"y1" : 40,
+	  	"x2" : 135+i*50,
+	  	"y2" : 40 + (1-percent) * 400,
 	  	"stroke": "black",
-	  	"stroke-width" : 60,
+	  	"stroke-width" : 50,
 	  	"opacity" : 0.75
 		})
 		svg.appendChild(black);
-	}
 
-	// Add high and low bar
-	let minMax = [[low,"end","blue"] , [high,"start","red"]];
-	for (let i=0; i<=1; i++) {
+		// Add temperature labels
 		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
 		setAttributes(text,{
-			"x" : 90 + 420 * i,
-			"y" : 200,
-			"text-anchor" : minMax[i][1],
-			"fill" : minMax[i][2],
+			"x" : 100+i*120,
+			"y" : 40 + (1-percent) * 400,
+			"text-anchor" : ["end","start"][i],
+			"fill" : "white",
 			"dominant-baseline" : "central"
 		})
-		text.textContent = minMax[i][0] + " °C";
-		text.style.fontSize = "1em";
+		text.textContent = temps[i] + " °C";
+		text.style.fontSize = "0.7em";
 		svg.appendChild(text);
+
+		// Add "Outdoor" and "Feels like" labels
+		let labels = document.createElementNS("http://www.w3.org/2000/svg", "text");
+		setAttributes(labels,{
+			"x" : 100+i*120,
+			"y" : 10 + (1-percent) * 400,
+			"fill" : "white",
+			"text-anchor" : ["end","start"][i],
+			"dominant-baseline" : "middle"
+		})
+		labels.textContent = ["Outdoor","Feels like"][i];
+		labels.style.fontSize = "0.5em";
+		svg.appendChild(labels);
 	}
 
-	// Add labels "outdoor" and "feels like"
-	let words = ["Outdoor", "Feels like"];
+	// If low same as high, range will cause divide by zero
+	let rangeHighLow = high - low;
+	if (low == high) {
+		rangeHighLow = 1; // Avoid division by zero
+	}
+	
+	// In case temperatures out of bounds
+  let percent = (temperature - low) / rangeHighLow;
+	if (temperature > high) {
+  	percent = 1
+  } else if (temperature < low) {
+  	percent = 0
+  } else if (rangeHighLow == 1 && temperature == low) { // Super special situation !
+  	percent = 1
+  }
+
+	// Draw solid background
+	let solid2 = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  setAttributes(solid2,{
+  	"x" : 380,
+  	"y" : 40,
+  	"width" : 40,
+  	"height" : 400,
+  	"fill": "black"
+	})
+	svg.appendChild(solid2);
+
+	// Draw full high low gradient
+	let line2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  setAttributes(line2,{
+  	"x1" : 400,
+  	"y1" : 40,
+  	"x2" : 400.001, // .001 otherwise horizontal gradient line doesn't show
+  	"y2" : 440,
+  	"stroke": "url(#highLowGradient)",
+  	"stroke-width" : 40,
+  	"stroke-dasharray" : "5,2"
+	})
+	svg.appendChild(line2);
+
+	// Hide the part that is beyond the temperature
+	let black = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  setAttributes(black,{
+  	"x1" : 400,
+  	"y1" : 40,
+  	"x2" : 400,
+  	"y2" : 40 + (1-percent)*400,
+  	"stroke": "black",
+  	"stroke-width" : 40,
+  	"opacity" : 0.6
+	})
+	svg.appendChild(black);
+
+	// Add high and low temps
 	for (let i=0; i<=1; i++) {
 		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
 		setAttributes(text,{
-			"x" : 300,
-			"y" : 205 - 170 * (-1)**i,
+			"x" : 400,
+			"y" : 35 + i*410,
 			"text-anchor" : "middle",
-			"dominant-baseline" : "middle"
+			"fill" : "white",
+			"dominant-baseline" : ["baseline","hanging"][i]
 		})
-		text.textContent = words[i];
-		text.style.fontSize = "0.8em";
+		text.textContent = [high,low][i] + " °C";
+		text.style.fontSize = "0.5em";
 		svg.appendChild(text);
 	}
-
+	
   document.getElementById("temperatureGauge").innerHTML = "";
   document.getElementById("temperatureGauge").appendChild(svg);
 }
@@ -365,20 +411,15 @@ function setRGB(temperature) { // delete this entire function !!!!!!!!!!!!
 	  //console.log(String.fromCharCode(95+i),red,green,blue,span.style.backgroundColor)
 	  div.appendChild(span)
 	}
-
-
 }
 
 
-
-
-
-
 function windGauge(values,words) {
-	// Size of SVG and max values to represent
+	// Size of SVG and max values to represent on wind scale
 	let width = 400, height = 400, min = 0, max = 32;
-	let circle = {"x" : width/2, "y" : height/2, "r" : 150, "c" : 2*Math.PI*150};	// Centre x,y and radius and circumference
-
+	let circle = {"x" : width/2, "y" : height/2, "r" : width/3*1.2};	// Centre x,y and radius and circumference
+ 	circle.c = 2*Math.PI*circle.r; // Needs to be computed separately because radius needs to be set first
+	
 	// Create the SVG element
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   
@@ -394,7 +435,7 @@ function windGauge(values,words) {
   	"stroke" : perc2color(0),
   	"opacity" : 0.7,
   	"fill" : "none",
-  	"stroke-width" : 60
+  	"stroke-width" : 55
 	})
   svg.appendChild(background);
   
@@ -404,6 +445,7 @@ function windGauge(values,words) {
   	if (values[i] > max) { // Put at maximum if out of range
   		values[i] = max
   	}
+
   	let percentage = values[i] / max;
   	let arc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     setAttributes(arc,{
@@ -413,7 +455,7 @@ function windGauge(values,words) {
 	  	"r" : circle.r,
 	  	"stroke" : perc2color(percentage),
 	  	"fill" : "none",
-	  	"stroke-width" : 60,
+	  	"stroke-width" : 55,
 	  	"opacity" : opacity[i],
 	  	"stroke-linecap" : "round",
 	  	"stroke-dasharray" : `${circle.c*percentage}, ${circle.c}` // Dash length, space length
@@ -426,7 +468,7 @@ function windGauge(values,words) {
 		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
 		setAttributes(text,{
 			"x" : circle.x,
-			"y" : circle.y+i*40-30,
+			"y" : circle.y+i*40-25,
 			"text-anchor" : "middle"
 		})
 		text.textContent = words[i];
@@ -438,9 +480,9 @@ function windGauge(values,words) {
 	let windVane = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
 	windVane.id = "windVane";
 	setAttributes(windVane,{
-		"points" : `${circle.x-10},${circle.y-circle.r-45} ${circle.x+10},${circle.y-circle.r-45} ${circle.x},${circle.y-circle.r-5}`,
+		"points" : `${circle.x-5},${circle.y-circle.r-45} ${circle.x+15},${circle.y-circle.r-45} ${circle.x},${circle.y-circle.r-5}`,
+		"fill" : "white"
 	})
-	windVane.style.fill = "red";
 	windVane.style.transform = `rotate(${values[2]}deg)`; // Rotate it according to wind direction
 	svg.appendChild(windVane);
 
