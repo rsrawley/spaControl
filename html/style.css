@@ -5,6 +5,10 @@ body {
 	background: linear-gradient(90deg, rgba(0,113,196,1) 0%, rgba(152,173,189,1) 100%);
 }
 
+:focus { /* Hide focus outline */
+    outline: 0;
+}
+
 #setMinus,#setPlus {
 	height: 64px;
 	width: 64px;
@@ -41,8 +45,12 @@ button {
 	color: red;
 }
 
-#ST {
+#setTemp {
 	color: orange;
+	font-size: 50px;
+	background-color: transparent;
+	border: none;
+	-webkit-appearance: none; /* Hide the arrow */
 }
 
 

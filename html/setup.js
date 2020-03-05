@@ -119,3 +119,21 @@ function drawHourly() {
 		grid.insertBefore(iconDiv,grid.children[(row+1)*(params.length+1) + 1]);
 	}
 }
+
+setTempDropMenu();
+function setTempDropMenu() {
+	let menu = document.getElementById("setTemp");
+
+	for (let i=105; i>=96; i--) {
+		let option = document.createElement('option');
+		option.text = `${i} °F`;
+		option.value = i;
+		option.style.color = "red";
+		menu.appendChild(option);
+	}
+
+	// Refaire la dernière option comme la température actuelle
+	 document.getElementById("setTemp").options[0].value = "";
+	 document.getElementById("setTemp").options[0].text = "---";
+	 document.getElementById("setTemp").options[0].style.color = "orange";
+}

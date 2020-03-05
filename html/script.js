@@ -1,7 +1,16 @@
 // Add event listeners
 // Set temperature buttons
-document.getElementById("setMinus").onclick = function() {sendValue('setTemp',Number(document.getElementById("ST").innerHTML) - 1)};
-document.getElementById("setPlus").onclick = function() {sendValue('setTemp',Number(document.getElementById("ST").innerHTML) + 1)};
+document.getElementById("setMinus").onclick = function() {sendValue('setTemp',Number(document.getElementById("setTemp").value) - 1)};
+document.getElementById("setPlus").onclick = function() {sendValue('setTemp',Number(document.getElementById("setTemp").value) + 1)};
+
+// Set temperature dropdown menu
+document.getElementById("setTemp").onchange = function() {
+	let setTemp = document.getElementById("setTemp").value;
+	if (setTemp != "") {
+		sendValue("setTemp",setTemp)
+	}
+}
+
 
 // Control buttons
 document.getElementById("lights").onclick = function() {sendValue('toggleItem','lights')};
@@ -9,7 +18,7 @@ document.getElementById("jets1").onclick = function() {sendValue('toggleItem','p
 document.getElementById("jets2").onclick = function() {sendValue('toggleItem','pump2')};
 
 
-// Add event listeners
+// Set temp button at bottom of web page
 document.getElementById("setTempButton").addEventListener("click", function(){
 	sendValue("setTemp", document.getElementById("setTemp").value);
 });
@@ -55,7 +64,7 @@ socket.on('data',function(data) {
 		temperatureGauge(Number(data.value.current.temperature),Number(data.value.current.feelsLike),Number(data.value.current.low),Number(data.value.current.high))
 
 		// Wind gauge values
-		let wind = Number(data.value.current.wind);
+		let wind = Number(data.value.current.wind);		
 		let windGust = Number(data.value.current.windGust);
 		let windAngle = ["N","NE","E","SE","S","SW","W","NW"].indexOf(data.value.current.windDir) * 360/8 + 40; // Offset of 40deg is relative to where hot tub is pointing compared to true north
 		windGauge([windGust,wind,windAngle],["wind " + wind,"gust " + windGust,"km/h"]);
@@ -112,6 +121,11 @@ socket.on('data',function(data) {
 					symbol[i].innerHTML = ["&deg;F","&deg;C"][Number(data.value)]
 				}
 			}
+		} else if (data.id == "ST") {
+			let setTempMenu = document.getElementById("setTemp")
+			setTempMenu.options[0].text = `${parseInt(data.value,16)} °F`;
+			setTempMenu.options[0].value = parseInt(data.value,16);
+			setTempMenu.options[0].selected = true;
 		}
 		
 		if (document.getElementById(data.id)) { // id exists ?
@@ -231,14 +245,15 @@ function temperatureGauge(temperature,feelsLike,low,high) {
 
   let min = -35, max = 35; // Minimum and maximum temperatures to be represented on the scale
   let range = max - min;
+  let thermo = {"x":110, "y":45, "w":60, "h":397}; // To easily adjust temperature gauge appearance (x,y), width, height
 
 	// Draw solid black background
 	let solid = document.createElementNS("http://www.w3.org/2000/svg", "rect");
   setAttributes(solid,{
-  	"x" : 110,
-  	"y" : 40,
-  	"width" : 100,
-  	"height" : 400,
+  	"x" : thermo.x,
+  	"y" : thermo.y,
+  	"width" : thermo.w*2,
+  	"height" : thermo.h,
   	"fill": "black"
 	})
 	svg.appendChild(solid);
@@ -256,12 +271,12 @@ function temperatureGauge(temperature,feelsLike,low,high) {
 		// Draw full rainbow line
 		let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
 	  setAttributes(line,{
-	  	"x1" : 135+i*50,
-	  	"y1" : 40,
-	  	"x2" : 135+i*50+0.001, // .001 otherwise horizontal gradient line doesn't show
-	  	"y2" : 440,
+	  	"x1" : thermo.x + thermo.w/2 + i * thermo.w,
+	  	"y1" : thermo.y,
+	  	"x2" : thermo.x + thermo.w/2 + i * thermo.w + 0.001, // .001 otherwise horizontal gradient line doesn't show
+	  	"y2" : thermo.y + thermo.h,
 	  	"stroke": "url(#rainbowGradient)",
-	  	"stroke-width" : 50,
+	  	"stroke-width" : thermo.w,
 	  	"stroke-dasharray" : "5,2",
 	  	"opacity" : [1,0.8][i]
 		})
@@ -270,41 +285,30 @@ function temperatureGauge(temperature,feelsLike,low,high) {
 		// Hide the part that is beyond the temperature
   	let black = document.createElementNS("http://www.w3.org/2000/svg", "line");
 	  setAttributes(black,{
-	  	"x1" : 135+i*50,
-	  	"y1" : 40,
-	  	"x2" : 135+i*50,
-	  	"y2" : 40 + (1-percent) * 400,
+	  	"x1" : thermo.x + thermo.w/2 + i * thermo.w,
+	  	"y1" : thermo.y,
+	  	"x2" : thermo.x + thermo.w/2 + i * thermo.w + 0.001,
+	  	"y2" : thermo.y + (1-percent) * thermo.h,
 	  	"stroke": "black",
-	  	"stroke-width" : 50,
+	  	"stroke-width" : thermo.w,
 	  	"opacity" : 0.75
 		})
 		svg.appendChild(black);
 
-		// Add temperature labels
-		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-		setAttributes(text,{
-			"x" : 100+i*120,
-			"y" : 40 + (1-percent) * 400,
-			"text-anchor" : ["end","start"][i],
-			"fill" : "white",
-			"dominant-baseline" : "central"
-		})
-		text.textContent = temps[i] + " °C";
-		text.style.fontSize = "0.7em";
-		svg.appendChild(text);
-
-		// Add "Outdoor" and "Feels like" labels
-		let labels = document.createElementNS("http://www.w3.org/2000/svg", "text");
-		setAttributes(labels,{
-			"x" : 100+i*120,
-			"y" : 10 + (1-percent) * 400,
-			"fill" : "white",
-			"text-anchor" : ["end","start"][i],
-			"dominant-baseline" : "middle"
-		})
-		labels.textContent = ["Outdoor","Feels like"][i];
-		labels.style.fontSize = "0.5em";
-		svg.appendChild(labels);
+		for (let j=0; j<=1; j++) {
+			// Add temperature labels
+			let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+			setAttributes(text,{
+				"x" : thermo.x - 10 + i * (thermo.w * 2 + 20),
+				"y" : [thermo.y,thermo.y-30][j] + (1-percent) * thermo.h,
+				"text-anchor" : ["end","start"][i],
+				"fill" : "white",
+				"dominant-baseline" : "central"
+			})
+			text.textContent = [[temps[i] + " °C",temps[i] + " °C"] , ["Outdoor","Feels like"]][j][i];
+			text.style.fontSize = ["0.7em","0.5em"][j];
+			svg.appendChild(text);
+		}
 	}
 
 	// If low same as high, range will cause divide by zero
@@ -327,9 +331,9 @@ function temperatureGauge(temperature,feelsLike,low,high) {
 	let solid2 = document.createElementNS("http://www.w3.org/2000/svg", "rect");
   setAttributes(solid2,{
   	"x" : 380,
-  	"y" : 40,
+  	"y" : 45,
   	"width" : 40,
-  	"height" : 400,
+  	"height" : 397,
   	"fill": "black"
 	})
 	svg.appendChild(solid2);
@@ -338,9 +342,9 @@ function temperatureGauge(temperature,feelsLike,low,high) {
 	let line2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
   setAttributes(line2,{
   	"x1" : 400,
-  	"y1" : 40,
+  	"y1" : 45,
   	"x2" : 400.001, // .001 otherwise horizontal gradient line doesn't show
-  	"y2" : 440,
+  	"y2" : 442,
   	"stroke": "url(#highLowGradient)",
   	"stroke-width" : 40,
   	"stroke-dasharray" : "5,2"
@@ -351,9 +355,9 @@ function temperatureGauge(temperature,feelsLike,low,high) {
 	let black = document.createElementNS("http://www.w3.org/2000/svg", "line");
   setAttributes(black,{
   	"x1" : 400,
-  	"y1" : 40,
+  	"y1" : 45,
   	"x2" : 400,
-  	"y2" : 40 + (1-percent)*400,
+  	"y2" : 45 + (1-percent)*397,
   	"stroke": "black",
   	"stroke-width" : 40,
   	"opacity" : 0.6
@@ -365,7 +369,7 @@ function temperatureGauge(temperature,feelsLike,low,high) {
 		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
 		setAttributes(text,{
 			"x" : 400,
-			"y" : 35 + i*410,
+			"y" : 40 + i*407,
 			"text-anchor" : "middle",
 			"fill" : "white",
 			"dominant-baseline" : ["baseline","hanging"][i]
@@ -480,7 +484,7 @@ function windGauge(values,words) {
 	let windVane = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
 	windVane.id = "windVane";
 	setAttributes(windVane,{
-		"points" : `${circle.x-5},${circle.y-circle.r-45} ${circle.x+15},${circle.y-circle.r-45} ${circle.x},${circle.y-circle.r-5}`,
+		"points" : `${circle.x-15},${circle.y-circle.r-45} ${circle.x+15},${circle.y-circle.r-45} ${circle.x},${circle.y-circle.r-5}`,
 		"fill" : "white"
 	})
 	windVane.style.transform = `rotate(${values[2]}deg)`; // Rotate it according to wind direction
@@ -489,8 +493,8 @@ function windGauge(values,words) {
 	// North direction (text "N")
 	let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
 	setAttributes(text,{
-		"x" : 345,
-		"y" : 41,
+		"x" : circle.x - circle.r*Math.cos(values[2])*1.4,
+		"y" : circle.y - circle.r*Math.sin(values[2])*1.4,
 		"text-anchor" : "middle"
 	})
 	text.textContent = "N";
