@@ -31,16 +31,14 @@
 		<div>
 			<span id="HH"></span>:<span id="MM"></span>
 		</div>
-		<div>
+		<div class="statusHeat">
 			<span id="HF">Not heating</span>
 		</div>
 		<div>
+			<button id="setMinus"></button>
 			<select id="setTemp"></select>
+			<button id="setPlus"></button>
 		</div>
-		<!--			Spa : <span id="CT"></span> <span class="degSymbol"></span> <br>
-			Set : <button id="setMinus"></button> <select id="setTemp"></select>
-			<span id="ST"></span> <span class="degSymbol"></span> <button id="setPlus"></button><br>-->
-			<!--Spa in on/spa is on hold (time left: 59 min)<br>-->
 	</div>
 
 	<div class="large">
@@ -58,9 +56,7 @@
 	</div>
 	
 	<div class="large">
-		Weather<br>
-		<!--Outdoor : <span id="temperature"></span> &deg;C (feels like <span id="feelsLike"></span> &deg;C)<br>-->
-		<!--Wind: <span id="wind"></span> km/h (<span id="windDir"></span>), gusts <span id="windGust"></span> km/h<br>-->
+		Weather
 		<div class="grid-container-weather">
 			<div id="temperatureGauge"></div>
 			<div id="windGauge"></div>

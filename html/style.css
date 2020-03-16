@@ -13,7 +13,7 @@ body {
 /* Status display */
 .grid-container-status {
   display: grid;
-  grid-template-columns: 100px 600px 1fr;
+  grid-template-columns: 100px 1fr 1fr;
 }
 
 .grid-container-status > div {
@@ -27,8 +27,6 @@ body {
 	grid-row: 1 / span 3;
 }
 
-
-/*
 #setMinus,#setPlus {
 	height: 64px;
 	width: 64px;
@@ -43,7 +41,6 @@ body {
 #setPlus {
 	background-image: url("pictures/up.png");
 }
-*/
 
 .large {
 	font-size: 50px;
@@ -66,12 +63,17 @@ button {
 	font-size: 40px;
 }
 
+.statusHeat {
+	background-color: black;
+}
+
 #setTemp {
 	color: orange;
 	font-size: 50px;
 	background-color: transparent;
 	border: none;
 	-webkit-appearance: none; /* Hide the arrow */
+	margin: 0px 10px;
 }
 
 

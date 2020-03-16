@@ -1,8 +1,8 @@
 // Add event listeners
 // Set temperature buttons
 
-//document.getElementById("setMinus").onclick = function() {sendValue('setTemp',Number(document.getElementById("setTemp").value) - 1)};
-//document.getElementById("setPlus").onclick = function() {sendValue('setTemp',Number(document.getElementById("setTemp").value) + 1)};
+document.getElementById("setMinus").onclick = function() {sendValue('setTemp',Number(document.getElementById("setTemp").value) - 1)};
+document.getElementById("setPlus").onclick = function() {sendValue('setTemp',Number(document.getElementById("setTemp").value) + 1)};
 
 // Set temperature dropdown menu
 document.getElementById("setTemp").onchange = function() {
@@ -56,7 +56,7 @@ socket.on('data',function(data) {
 	//console.log(data);
 	data.value = data.value.toString().padStart(2,"0"); // Put zeroes in front so it looks like hex (easier for me to spot in if statements)
 
-	if (data.id == "HF ") { // Heat flag -- also contains high/low range info
+	if (data.id == "HF") { // Heat flag -- also contains high/low range info
 		let heat = [{"04" : "On hold", "0c" : "Not heating", "2c" : "Waiting", "1c" : "Heating"}, // High range
 								{"00" : "On hold", "08" : "Not heating", "28" : "Waiting", "18" : "Heating"}]; // Low range
 		
@@ -93,17 +93,20 @@ socket.on('data',function(data) {
 				symbol[i].innerHTML = ["&deg;F","&deg;C"][Number(data.value)]
 			}
 		}
-	} else if (data.id == "ST") {
+	} else if (data.id == "ST") {	
 		let setTempMenu = document.getElementById("setTemp")
-		setTempMenu.options[0].text = `${parseInt(data.value,16)} °F`;
+		setTempMenu.options[0].text = `${parseInt(data.value,16)}°F`;
 		setTempMenu.options[0].value = parseInt(data.value,16);
 		setTempMenu.options[0].selected = true;
 	}
 	
 	// Temperatures udpate
-	if (["CT","ST","TA","TB"].includes(data.id)) {
-		spa[data.id] = parseInt(data.value,16).toString().padStart(2,"0");
-		if (spa.CT != undefined && spa.ST != undefined) { // Make sure there are values (especially on first load)
+	if (["CT","ST","TA","TB","HF"].includes(data.id)) {
+		spa[data.id] = data.value;
+		if (data.id != "HF") { // Convert temperature numbers into decimal (from hexadecimal)
+			spa[data.id] = parseInt(data.value,16).toString().padStart(2,"0");
+		}		
+		if (spa.CT != undefined && spa.ST != undefined && spa.HF != undefined) { // Make sure there are values (especially on first load)
 			spaGauge(spa);
 		}
 	}
@@ -137,7 +140,7 @@ function spaGauge(data) {
 	}
 
 	// Size of SVG and max values to represent
-	let width = 600, height = 200;
+	let width = 550, height = 200;
 
 	// Create the SVG element
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -165,7 +168,7 @@ function spaGauge(data) {
 
   let min = 80, max = 104; // Minimum and maximum temperatures to be represented on the scale
   let range = max - min;
-  let thermo = {"x":50, "y":80, "w":500, "h":60}; // To easily adjust temperature gauge appearance (x,y), width, height
+  let thermo = {"x":25, "y":80, "w":500, "h":60}; // To easily adjust temperature gauge appearance (x,y), width, height
 
 	// Draw solid black background
 	let solid = document.createElementNS("http://www.w3.org/2000/svg", "rect");
@@ -179,6 +182,7 @@ function spaGauge(data) {
 	svg.appendChild(solid);
 	
 	// In case temperatures out of bounds
+//data={CT:10,ST:10,TA:102,TB:106,HF:"0"}
 	let temps = [data.CT,data.ST,data.TA,data.TB];
 	let percent = [];
 	for (let i=0; i<=3; i++) {
@@ -218,30 +222,32 @@ function spaGauge(data) {
 
 	// Add markers for heater temp A & B and set temp
 	for (let i=3; i>=1; i--) {
-		let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-		setAttributes(line,{
-  		"x1" : thermo.x + thermo.w * percent[i],
-	  	"y1" : thermo.y ,
-	  	"x2" : thermo.x + thermo.w * percent[i],
-	  	"y2" : thermo.y + thermo.h  + 0.001,
-	  	"stroke" : ["orange","red","red"][i-1],
-	  	"stroke-width" : 6
-		})
-		svg.appendChild(line);
+		if ((i>1 && data.HF != "0c" && data.HF !="08") || i == 1) { // For heater temps A & B, can't be in "Not heating"
+			let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+			setAttributes(line,{
+	  		"x1" : thermo.x + thermo.w * percent[i],
+		  	"y1" : thermo.y ,
+		  	"x2" : thermo.x + thermo.w * percent[i],
+		  	"y2" : thermo.y + thermo.h  + 0.001,
+		  	"stroke" : ["orange","darkslategray","darkslategray"][i-1],
+		  	"stroke-width" : 6
+			})
+			svg.appendChild(line);
+		}
 	}
 
 	// CT and ST temperature labels
 	for (let i=0; i<=1; i++) {
 		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
 		setAttributes(text,{
-			"x" : thermo.x + thermo.w * percent[i],
-			"y" : thermo.y + i*thermo.h - 10 + i*20,
-			"fill" : ["#FF1111","orange"][i],
+			"x" : thermo.x + thermo.w * (0.5 + (percent[i] - 0.5) * 0.60),
+			"y" : thermo.y + i*thermo.h - 15 + i*30,
+			"fill" : ["limegreen","orange"][i],
 			"text-anchor" : "middle",
 			"dominant-baseline" : ["baseline","hanging"][i]
 		})
 		text.textContent = [`Spa: ${data.CT}°F`,`Set: ${data.ST}°F`][i];
-		text.style.fontSize = "0.7em";
+		text.style.fontSize = "1.0em";
 		svg.appendChild(text);
 	}
 	

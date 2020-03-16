@@ -99,7 +99,7 @@ function setTempDropMenu() {
 
 	for (let i=105; i>=96; i--) {
 		let option = document.createElement('option');
-		option.text = `${i} °F`;
+		option.text = `${i}°F`;
 		option.value = i;
 		option.style.color = "red";
 		menu.appendChild(option);
