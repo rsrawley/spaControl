@@ -354,6 +354,9 @@ function drawWeatherChart(weatherData) {
 		hAxis : {textStyle:{color: 'white'}},
 		baselineColor: 'transparent',
     pointSize: 7,
+    hAxis: {
+    	textStyle:{color: "white",fontSize:fontSize}
+    },
 		series: {
 			// Gives each series an axis name that matches the Y-axis below.
 			0: {targetAxisIndex:0, color:colors.outdoor, lineWidth:'4', annotations: {stemColor:'none', textStyle:{fontSize:fontSize}}},
@@ -363,9 +366,9 @@ function drawWeatherChart(weatherData) {
 			4: {targetAxisIndex:4 , color:colors.POP, type:'bars'}
 		},
 		vAxes: {			
-			0: {title:'Outdoor (°C)', gridlines:{count:0,interval:[1,2,5]}, viewWindow:{min:min.temperature-2,max:max.temperature+2}, titleTextStyle:{color: colors.outdoor}, textStyle:{color: colors.outdoor}, textPosition: 'none'},
+			0: {title:'Outdoor (°C)', gridlines:{count:0,interval:[1,2,5]}, viewWindow:{min:min.temperature-2,max:max.temperature+2}, titleTextStyle:{color: colors.outdoor,fontSize:fontSize}, textStyle:{color: colors.outdoor}, textPosition: 'none'},
 			1: {format:'decimal', gridlines:{count:0}, viewWindow:{min:min.temperature-2,max:max.temperature+2}, textPosition: 'none'},
-			2: {title:'Wind (km/h)', gridlines:{count:0,interval:[1,2,5]}, viewWindow:{min:0, max:max.wind}, titleTextStyle:{color: colors.wind}, textStyle:{color: colors.wind}, textPosition: 'none'},
+			2: {title:'Wind (km/h)', gridlines:{count:0,interval:[1,2,5]}, viewWindow:{min:0, max:max.wind}, titleTextStyle:{color: colors.wind,fontSize:fontSize}, textStyle:{color: colors.wind}, textPosition: 'none'},
 			3: {format:'decimal', gridlines:{count:0}, viewWindow:{min:0, max:max.wind}, textPosition: 'none'},
 			4: {format:'decimal', gridlines:{count:0}, viewWindow:{min:0,max:100}, textPosition: 'none'}
 		}
@@ -426,7 +429,7 @@ function drawChart(graphData) {
 		backgroundColor: '#000',//{ fill:'transparent' },
 		legend: {position: 'bottom', textStyle:{color: 'white'}},
 		//curveType : 'function',
-		hAxis : {format:'HH:mm', textStyle:{color: 'white'}}, // hours:minutes
+		hAxis : {format:'HH:mm', textStyle:{color: 'white',fontSize:30}}, // hours:minutes
 		series: {
 			// Gives each series an axis name that matches the Y-axis below.
 			0: {targetAxisIndex:0, color:colors.spa, lineWidth:'4'},
@@ -434,8 +437,8 @@ function drawChart(graphData) {
 			2: {targetAxisIndex:2 , color:colors.heating , type:'area'} // alernatively, "steppedArea"
 		},
 		vAxes: {
-			0: {title:'Spa (°F)', format:'decimal', titleTextStyle:{color: colors.spa}, textStyle:{color: colors.spa}, minorGridlines:{count:0}, viewWindow:{min:90,max:104}},
-			1: {title:'Outdoor (°C)', format:'decimal', titleTextStyle:{color: colors.outdoor}, textStyle:{color: colors.outdoor}, gridlines:{count:0}},
+			0: {title:'Spa (°F)', format:'decimal', titleTextStyle:{color: colors.spa,fontSize:30}, textStyle:{color: colors.spa}, minorGridlines:{count:0}, viewWindow:{min:90,max:104}},
+			1: {title:'Outdoor (°C)', format:'decimal', titleTextStyle:{color: colors.outdoor,fontSize:30}, textStyle:{color: colors.outdoor}, gridlines:{count:0}},
 			2: {format:'decimal', gridlines:{count:0}, textPosition: 'none', viewWindow:{min:0.1}}
 		}
 	}
@@ -571,7 +574,7 @@ function temperatureGauge(data) {
 				"x" : thermo.x + thermo.w + 20,
 				"y" : thermo.y + (1-percent[i+1]) * thermo.h - 1 + 30*(i*2-1)*j - 5,
 				"text-anchor" : "start",
-				"fill" : ["red","blue"][i],
+				"fill" : ["red","blue"][i],				
 				"dominant-baseline" : ["baseline","hanging"][i]
 			})
 			text.textContent = [[[data.high,data.low][i] + " °C",[data.high,data.low][i] + " °C"], ["high","low"]][j][i];
