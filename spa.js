@@ -68,18 +68,18 @@ process.on('SIGINT', function () {
 })
 
 // Set up client requests for weather
-let request = require("request");
+let request = require("request2.0");
 fetchWeather(); // Initial call
 setInterval(fetchWeather, 5 * 60000); // Every 5 minutes after that
 
 function fetchWeather() {
 	request({"url": "http://192.168.1.58:3000", "json": true}, function (error, response, body) {
-		if (!error && response.statusCode === 200) {
+		if (!error && response.statusCode === 200 && body != undefined) {
 			let abort = 0;
 			let weather = {};
 			let params = { // Weather parameters I want to pick up
-				current : ["temperature","feelsLike","wind","windDir","windGust","high","low"],
-				hourly : ["hour","icon","temperature","feelsLike","wind","windDir","windGust","POP","rain","snow"]
+				current : ["icon","temperature","feelsLike","wind","windDir","windGust","high","low","sunrise","sunset","sunrise_gmt","sunset_gmt","airQualityIndex","airQualityLevel","moonRise","moonSet","moonPhase"],
+				hourly : ["hour","milli","icon","temperature","feelsLike","wind","windDir","windGust","POP","rain","snow"]
 			};
 
 			for (let key in params) {
@@ -97,7 +97,7 @@ function fetchWeather() {
 
 			if (abort != 1) {
 				spa.weather = weather;
-				io.emit('data',{"id" : "weather", "value" : spa.weather}); // Send to all connected clients
+				io.emit('weather',spa.weather); // Send to all connected clients
 			}
 		}
 	})
@@ -124,7 +124,7 @@ io.on('connection', function(socket){
 
 	// Send initial graph data
 	io.emit('graphData',graphData);
-
+	io.emit('weather',spa.weather); // Send to all connected clients
 
   // Messages received
   socket.on('command', function(command) {
@@ -321,7 +321,7 @@ function readData(data) {
 		message.type = message.type.substr(0,2) + " " + message.type.substr(2,2) + " " + message.type.substr(4,2);
 
 		// For testing purposes
-		displayMessages(message.type,message.content)
+		displayMessages(message.type,message.content);
 
 		// Has a message already been sent to motherboard ?
 		// Verify that response is not in ignore list and is not the regular status update -- any other response will be deemed as confirmation of command received
@@ -364,8 +364,10 @@ function readData(data) {
 			if (codeLine != undefined) { // Has a code line been defined for this message type ?
 				for (let i=0; i<message.length; i++) {
 					if (codeLine[i] in codes) { // If a code exists in codeLine, store in spa{}
-						spa[codeLine[i]] = message.content[i]; // Update items in memory
-						io.emit('data',{"id" : codeLine[i], "value" : spa[codeLine[i]]}); // Send to all connected clients
+						if (spa[codeLine[i]] != message.content[i]) { // Only update if not the same value
+							spa[codeLine[i]] = message.content[i]; // Update items in memory
+							io.emit('data',{"id" : codeLine[i], "value" : spa[codeLine[i]]}); // Send to all connected clients
+						}
 					}
 				}
 			}
@@ -675,6 +677,11 @@ fs.readFile('graphData','utf8', function(err,data) {
 
 // Read temperatures every 5 minutes for graph
 setInterval(function() {
+	// Sometimes on boot, the weather service is not ready to give out weather when spa.js is started, so the weather is undefined
+	if (spa.weather == undefined) {
+		return // Abort function -- no weather data
+	}
+
 	// Data format ['Time','Spa','Exterior','Heating']
 	let heatStatus = 0;
 	if (["2c","1c","28","18"].includes(spa.HF)) {
@@ -682,7 +689,7 @@ setInterval(function() {
 	}
 
 	// Time to nearest minute[0], spa temperature[1], outside temperature[2], heat status[3]
-	graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(spa.CT,16),parseInt(spa.weather.temperature,10),heatStatus]);
+	graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(spa.CT,16),parseInt(spa.weather.current.temperature,10),heatStatus]);
 
 	// Keep only last 24 hours data (12 data points per hour and 24 h)
 	if (graphData.length >= 288) {

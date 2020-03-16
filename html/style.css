@@ -9,6 +9,26 @@ body {
     outline: 0;
 }
 
+
+/* Status display */
+.grid-container-status {
+  display: grid;
+  grid-template-columns: 100px 600px 1fr;
+}
+
+.grid-container-status > div {
+	border: 1px solid black;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.statusGridSpan {
+	grid-row: 1 / span 3;
+}
+
+
+/*
 #setMinus,#setPlus {
 	height: 64px;
 	width: 64px;
@@ -23,6 +43,7 @@ body {
 #setPlus {
 	background-image: url("pictures/up.png");
 }
+*/
 
 .large {
 	font-size: 50px;
@@ -33,7 +54,6 @@ body {
 
 .programs button{
 	background-color: rgba(175, 175, 0, 0.5);
-
 }
 
 button {
@@ -41,8 +61,9 @@ button {
 	padding: 30px;
 }
 
-#CT,#HF {
+#HF {
 	color: red;
+	font-size: 40px;
 }
 
 #setTemp {
@@ -67,28 +88,19 @@ button {
 	justify-content: center;
 }
 
-/* Definitions for wind meter */
+#temperatureGauge {
+	grid-row: 1 / span 2;
+}
+
+#weatherGraph {
+	grid-column: 1 / span 2;
+}
+
+
+/* Definitions for round meters (arcs) */
 .arc {
 	transform: rotate(180deg);
   transform-origin: center center;
-}
-
-#windVane {
-  transform-origin: center center;
-}
-
-
-/* Definitions for hourly weather grid */
-.grid-container-hourly {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  font-size: 0.6em;
-}
-.grid-container-hourly > * {
-  border: 1px solid black;
-  display: flex;
-	align-items: center;
-	justify-content: center;
 }
 
 

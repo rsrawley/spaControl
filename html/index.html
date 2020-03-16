@@ -21,12 +21,26 @@
 </head>
 
 <body>
-	<div class="large">
-		Status<br>
-		Time <span id="HH"></span>:<span id="MM"></span><br>		
-		Spa : <span id="CT"></span> <span class="degSymbol"></span> (<span id="HF"></span>)<br>
-		Set temperature: <button id="setMinus"></button> <select id="setTemp"></select> <!--<span id="ST"></span> <span class="degSymbol">--></span> <button id="setPlus"></button><br>
-		<!--Spa in on/spa is on hold (time left: 59 min)<br>-->
+	<div class="large grid-container-status">
+		<div class="statusGridSpan">
+			<img id="icon">
+		</div>
+		<div class="statusGridSpan">
+			<div id="spaGauge"></div>
+		</div>
+		<div>
+			<span id="HH"></span>:<span id="MM"></span>
+		</div>
+		<div>
+			<span id="HF">Not heating</span>
+		</div>
+		<div>
+			<select id="setTemp"></select>
+		</div>
+		<!--			Spa : <span id="CT"></span> <span class="degSymbol"></span> <br>
+			Set : <button id="setMinus"></button> <select id="setTemp"></select>
+			<span id="ST"></span> <span class="degSymbol"></span> <button id="setPlus"></button><br>-->
+			<!--Spa in on/spa is on hold (time left: 59 min)<br>-->
 	</div>
 
 	<div class="large">
@@ -50,25 +64,12 @@
 		<div class="grid-container-weather">
 			<div id="temperatureGauge"></div>
 			<div id="windGauge"></div>
-		</div>
-		<!--<div id='test'></div>-->
+			<div id="sunGauge"></div>
+			<div id="weatherGraph" style="width: 950px; height: 600px"></div>
+		</div>		
 	</div>
 
-	<div class="large">
-		Weather forecast<br>
-		<div id="weatherForecast" class="grid-container-hourly">
-			<div>Hour</div>
-			<div>Icon</div>
-			<div>Temp</div>
-			<div>Feels</div>
-			<div>Wind</div>
-			<div>Dir</div>
-			<div>Gusts</div>
-			<div>POP</div>
-			<div>Rain</div>
-			<div>Snow</div>
-		</div>
-	</div>
+	<div id="graph" style="width: 950px; height: 600px"></div>
 
 	<div class="large">
 		Settings<br>
@@ -90,15 +91,14 @@
 		Logs<br>
 	</div>
 
-	<div id="graph" style="width: 950px; height: 600px"></div>
-
 	<div>
 		Last error : <span id="error"></span>
 	</div>
 	
 	<div id="settings">
 	</div>
-	
+
+<!--
 	<div>
 		Set temperature to : <input id="setTemp" type="number" value=100> <button id="setTempButton">Set Temp</button>
 	</div>
@@ -106,7 +106,6 @@
 <br>
 <br>
 
-<!--
 	<div>
 		<button onclick="sendValue('test','10 bf 11 50 00')">test1</button>
 		<button onclick="sendValue('test','10 bf 23 09 00 0b 00 94 00 0c 00')">test2</button>
