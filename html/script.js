@@ -142,26 +142,17 @@ function spaGauge(data) {
 	// Size of SVG and max values to represent
 	let width = 550, height = 200;
 
-	// Create the SVG element
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  
-  // Set width and height
-  setAttributes(svg, {"width" : width, "height" : height});
+	// Create the SVG element and set width and height
+  let svg = createSVG("svg",document.getElementById("spaGauge"),{"width":width, "height":height});
 
   // Sets definitions for blue/red gradient
-  let defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
- 	svg.appendChild(defs);
-  let gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-  gradient.id = "spaGradient";
-  setAttributes(gradient,{"x1":"0%" , "y1":"0%" , "x2":"100%" , "y2":"0%"});
-  defs.appendChild(gradient);
+  let defs = createSVG("defs",svg);
+  let gradient = createSVG("linearGradient",defs,{"id":"spaGradient", "x1":"0%", "y1":"0%", "x2":"100%", "y2":"0%"});
 
 	let colors=["0,0,255","255,0,0"];
   for (let i=0; i<colors.length; i++) {
-  	let stop = document.createElementNS("http://www.w3.org/2000/svg", "stop");
-  	gradient.appendChild(stop);
- 	  setAttributes(stop,{
- 	  	"offset" : `${i*100/(colors.length-1)}%`,
+  	createSVG("stop",gradient,{
+  		"offset" : `${i*100/(colors.length-1)}%`,
  	  	"stop-color" : `rgb(${colors[i]})`
  	  })
   }
@@ -171,16 +162,14 @@ function spaGauge(data) {
   let thermo = {"x":25, "y":80, "w":500, "h":60}; // To easily adjust temperature gauge appearance (x,y), width, height
 
 	// Draw solid black background
-	let solid = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-  setAttributes(solid,{
+	createSVG("rect",svg,{
   	"x" : thermo.x,
   	"y" : thermo.y,
   	"width" : thermo.w,
   	"height" : thermo.h,
   	"fill": "black"
 	})
-	svg.appendChild(solid);
-	
+
 	// In case temperatures out of bounds
 //data={CT:10,ST:10,TA:102,TB:106,HF:"0"}
 	let temps = [data.CT,data.ST,data.TA,data.TB];
@@ -195,8 +184,7 @@ function spaGauge(data) {
 	}
 
 	// Draw full gradient line
-	let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  setAttributes(line,{
+	createSVG("line",svg,{
   	"x1" : thermo.x,
   	"y1" : thermo.y + thermo.h/2,
   	"x2" : thermo.x + thermo.w,
@@ -205,11 +193,9 @@ function spaGauge(data) {
   	"stroke-width" : thermo.h,
   	"stroke-dasharray" : "5,2"
 	})
-	svg.appendChild(line);
 
 	// Hide the part that is beyond the temperature
-	let black = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  setAttributes(black,{
+	createSVG("line",svg,{
   	"x1" : thermo.x + thermo.w * percent[0],
   	"y1" : thermo.y + thermo.h/2,
   	"x2" : thermo.x + thermo.w,
@@ -218,13 +204,11 @@ function spaGauge(data) {
   	"stroke-width" : thermo.h,
   	"opacity" : 0.75
 	})
-	svg.appendChild(black);
 
 	// Add markers for heater temp A & B and set temp
 	for (let i=3; i>=1; i--) {
 		if ((i>1 && data.HF != "0c" && data.HF !="08") || i == 1) { // For heater temps A & B, can't be in "Not heating"
-			let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-			setAttributes(line,{
+			createSVG("line",svg,{
 	  		"x1" : thermo.x + thermo.w * percent[i],
 		  	"y1" : thermo.y ,
 		  	"x2" : thermo.x + thermo.w * percent[i],
@@ -232,14 +216,12 @@ function spaGauge(data) {
 		  	"stroke" : ["orange","darkslategray","darkslategray"][i-1],
 		  	"stroke-width" : 6
 			})
-			svg.appendChild(line);
 		}
 	}
 
 	// CT and ST temperature labels
 	for (let i=0; i<=1; i++) {
-		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-		setAttributes(text,{
+		let text = createSVG("text",svg,{
 			"x" : thermo.x + thermo.w * (0.5 + (percent[i] - 0.5) * 0.60),
 			"y" : thermo.y + i*thermo.h - 15 + i*30,
 			"fill" : ["limegreen","orange"][i],
@@ -248,11 +230,7 @@ function spaGauge(data) {
 		})
 		text.textContent = [`Spa: ${data.CT}°F`,`Set: ${data.ST}°F`][i];
 		text.style.fontSize = "1.0em";
-		svg.appendChild(text);
 	}
-	
-  document.getElementById("spaGauge").innerHTML = "";
-  document.getElementById("spaGauge").appendChild(svg);
 }
 
 
@@ -378,17 +356,14 @@ function drawWeatherChart(weatherData) {
   chart.draw(data, options);
 
   // Add weather icons to SVG created by Google chart
-  let svg = document.getElementById("weatherGraph").firstChild.firstChild.firstChild.firstChild; // Target the SVG (it's buried in several DIVs)
   for (let i=0; i<=5; i++) {
-		let image = document.createElementNS("http://www.w3.org/2000/svg", "image");
-	  setAttributes(image,{
+		createSVG("image",document.getElementById("weatherGraph").firstChild.firstChild.firstChild.firstChild,{ // Target the SVG (it's buried in several DIVs)
 	  	"x" : 158.75 + i*126.5 - 24, // negative adjustment to keep the image centered above time (half of image size)
 	  	"y" : 490,
 	  	"width" : 48,
 	  	"height" : 48,
 	  	"href" : weatherData.icon[i]
 		})
-		svg.appendChild(image);
   }
 }
 
@@ -452,25 +427,16 @@ function temperatureGauge(data) {
 	// Size of SVG and max values to represent
 	let width = 280, height = 480;
 
-	// Create the SVG element
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  
-  // Set width and height
-  setAttributes(svg, {"width" : width, "height" : height});
+  // Create the SVG element and set width and height
+  let svg = createSVG("svg",document.getElementById("temperatureGauge"),{"width":width, "height":height});
 
   // Sets definitions for rainbow gradient
-  let defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
- 	svg.appendChild(defs);
-  let rainbowGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-  rainbowGradient.id = "rainbowGradient";
-  setAttributes(rainbowGradient,{"x1":"0%" , "y1":"100%" , "x2":"0%" , "y2":"0%"});
-  defs.appendChild(rainbowGradient);
-
+  let defs = createSVG("defs",svg);  
+  let rainbowGradient = createSVG("linearGradient",defs,{"id":"rainbowGradient", "x1":"0%", "y1":"100%", "x2":"0%", "y2":"0%"});
+  
 	let rainbow=["238,130,238","95,20,150","71,174,230","0,255,0","255,255,0","255,127,0","255,0,0"]
   for (let i=0; i<rainbow.length; i++) {
-  	let stop = document.createElementNS("http://www.w3.org/2000/svg", "stop");
-  	rainbowGradient.appendChild(stop);
- 	  setAttributes(stop,{
+  	createSVG("stop",rainbowGradient,{
  	  	"offset" : `${i*100/(rainbow.length-1)}%`,
  	  	"stop-color" : `rgb(${rainbow[i]})`
  	  })
@@ -481,15 +447,13 @@ function temperatureGauge(data) {
   let thermo = {"x":130, "y":45, "w":60, "h":397}; // To easily adjust temperature gauge appearance (x,y), width, height
 
 	// Draw solid black background
-	let solid = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-  setAttributes(solid,{
+	createSVG("rect",svg,{
   	"x" : thermo.x,
   	"y" : thermo.y,
   	"width" : thermo.w,
   	"height" : thermo.h,
   	"fill": "black"
 	})
-	svg.appendChild(solid);
 	
 	// In case temperatures out of bounds
 	let temps = [data.temperature,data.high,data.low];
@@ -504,8 +468,7 @@ function temperatureGauge(data) {
 	}
 
 	// Draw full rainbow line
-	let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  setAttributes(line,{
+	createSVG("line",svg,{
   	"x1" : thermo.x + thermo.w/2,
   	"y1" : thermo.y,
   	"x2" : thermo.x + thermo.w/2 + 0.001, // .001 otherwise horizontal gradient line doesn't show
@@ -514,11 +477,9 @@ function temperatureGauge(data) {
   	"stroke-width" : thermo.w,
   	"stroke-dasharray" : "5,2"
 	})
-	svg.appendChild(line);
 
 	// Hide the part that is beyond the temperature
-	let black = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  setAttributes(black,{
+	createSVG("line",svg,{
   	"x1" : thermo.x + thermo.w/2,
   	"y1" : thermo.y,
   	"x2" : thermo.x + thermo.w/2 + 0.001,
@@ -527,14 +488,12 @@ function temperatureGauge(data) {
   	"stroke-width" : thermo.w,
   	"opacity" : 0.75
 	})
-	svg.appendChild(black);
 
 	// Add outdoor and feels like temperature labels
 	for (let i=0; i<=1; i++) {
 		for (let j=0; j<=1; j++) {
 			// Add temperature labels
-			let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-			setAttributes(text,{
+			let text = createSVG("text",svg,{
 				"x" : thermo.x - 10,
 				"y" : thermo.y + (1-percent[1]) * thermo.h + i*60 + j*-30 - 7,
 				"text-anchor" : "end",
@@ -547,17 +506,14 @@ function temperatureGauge(data) {
 			if (data.temperature < data.feelsLike) { // Reverse vertical order of temperatures if "feels like" is higher
 				text.textContent = [[temps[1-i] + " °C",temps[1-i] + " °C"] , ["Outdoor","Feels like"]][j][1-i];
 			}
-			
 			text.style.fontSize = ["0.7em","0.5em"][j];
-			svg.appendChild(text);
 		}
 	}
 
 	// Add high and low temps
 	for (let i=0; i<=1; i++) {
 		// Little pointer line
-		let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-		setAttributes(line,{
+		createSVG("line",svg,{
   		"x1" : thermo.x + thermo.w + 2 - 30,
 	  	"y1" : thermo.y + (1-percent[i+1]) * thermo.h + 0.001,
 	  	"x2" : thermo.x + thermo.w + 15,
@@ -565,12 +521,10 @@ function temperatureGauge(data) {
 	  	"stroke": ["red","blue"][i],
 	  	"stroke-width" : 4
 		})
-		svg.appendChild(line);
 
 		// High/low temperature labels
 		for (let j=0; j<=1; j++) {
-			let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-			setAttributes(text,{
+			let text = createSVG("text",svg,{
 				"x" : thermo.x + thermo.w + 20,
 				"y" : thermo.y + (1-percent[i+1]) * thermo.h - 1 + 30*(i*2-1)*j - 5,
 				"text-anchor" : "start",
@@ -579,12 +533,8 @@ function temperatureGauge(data) {
 			})
 			text.textContent = [[[data.high,data.low][i] + " °C",[data.high,data.low][i] + " °C"], ["high","low"]][j][i];
 			text.style.fontSize = "0.5em";
-			svg.appendChild(text);
 		}
 	}
-	
-  document.getElementById("temperatureGauge").innerHTML = "";
-  document.getElementById("temperatureGauge").appendChild(svg);
 }
 
 
@@ -600,19 +550,14 @@ function windGauge(data) {
  	circle.c = 2*Math.PI*circle.r; // Needs to be computed separately because radius needs to be set first
 	
 	// Create the SVG element
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  
-  // Set width and height
-  setAttributes(svg, {"width" : width, "height" : height, "viewBox" : "0 -90 400 240"});
+  let svg = createSVG("svg",document.getElementById("windGauge"),{"width":width, "height":height, "viewBox":"0 -90 400 240"});
 
   // Create grey background
-  let background = document.createElementNS("http://www.w3.org/2000/svg", "circle")
-  setAttributes(background,{
+  createSVG("circle",svg,{
   	"stroke" : perc2color(0),
   	"opacity" : 0.7,
   	"stroke-dasharray" : `${circle.c/2}, ${circle.c}` // Dash length, space length
 	},"arc",circle)
-  svg.appendChild(background);
   
   // Create colored arcs
   let opacity = [0.7, 1]; // Opacity of arcs (first is gust, second is wind)
@@ -622,57 +567,45 @@ function windGauge(data) {
   	}
 
   	let percentage = values[i] / max;
-  	let arc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    setAttributes(arc,{
+  	createSVG("circle",svg,{
 	  	"stroke" : perc2color(percentage),
 	  	"opacity" : opacity[i],
 	  	"stroke-dasharray" : `${circle.c/2*percentage}, ${circle.c}` // Dash length, space length
 		},"arc",circle)
-		svg.appendChild(arc);
 	}
 
 	// Add text in centre of gauge
 	for (let i=0; i<data.text.length; i++) {
-		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-		setAttributes(text,{
+		let text = createSVG("text",svg,{
 			"x" : circle.x,
 			"y" : circle.y+i*40-60,
 			"text-anchor" : "middle"
 		})
 		text.textContent = data.text[i];
 		text.style.fontSize = "0.8em";
-		svg.appendChild(text);
 	}
 
 	// Add wind direction pointer (offset by 40 degrees because of orientation of hot tub)
-	let windVane = document.createElementNS("http://www.w3.org/2000/svg", "g"); // Create a group
- 	setAttributes(windVane,{
+	let windVane = createSVG("g",svg,{
 	 	transform : `rotate(${data.windAngle} 0 -40)` // Rotate it according to wind direction
 	})
-	svg.appendChild(windVane); // Add the entire group to the SVG
 
 	// Arrow pointer
 	let arrowX = 0, arrowY = -40; // To make it easy to move around
-	let arrowTop = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-	setAttributes(arrowTop,{
+	createSVG("polygon",windVane,{
 		"points" : `${arrowX-12},${arrowY-0} ${arrowX+12},${arrowY-0} ${arrowX},${arrowY+30}`,
 		"fill" : "white"
 	})
-	windVane.appendChild(arrowTop);
-
-	let arrowBottom = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-	setAttributes(arrowBottom,{
+	createSVG("rect",windVane,{
 		"x" : arrowX - 2,
 		"y" : arrowY - 30,
 		"width" : 5,
 		"height" : 30,
 		"fill" : "white"
 	})
-	windVane.appendChild(arrowBottom);
 
 	// Circle to make wind vane look like a compass
-	let whiteCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-  setAttributes(whiteCircle,{
+	createSVG("circle",windVane,{
   	"cx": arrowX,
   	"cy": arrowY,
   	"r" : 40,
@@ -680,12 +613,10 @@ function windGauge(data) {
   	"stroke-width" : 5,
   	"fill" : "none"  	
 	})
-	windVane.appendChild(whiteCircle);
 
 	// Air quality level
 	// Circle around air quality
-	let whiteCircle2 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-  setAttributes(whiteCircle2,{
+	createSVG("circle",svg,{
   	"cx": 395,
   	"cy": -35,
   	"r" : 50,
@@ -693,12 +624,10 @@ function windGauge(data) {
   	"stroke-width" : 5,
   	"fill" : "white"
 	})
-	svg.appendChild(whiteCircle2);
 
 	let words = ["Air","quality",data.airQualityIndex];
 	for (let i=0; i<words.length; i++) {
-		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-		setAttributes(text,{
+		let text = createSVG("text",svg,{
 			"x" : 395,
 			"y" : -35-15 + i*25,
 			"text-anchor" : "middle",
@@ -706,16 +635,12 @@ function windGauge(data) {
 		})
 		text.textContent = words[i];
 		text.style.fontSize = "0.5em";
-		text.style.fontWeight = "bold";
-		svg.appendChild(text);
+		text.style.fontWeight = "bold";		
 	}
-	
-	// Draw SVG
-  document.getElementById("windGauge").innerHTML = "";
-  document.getElementById("windGauge").appendChild(svg);
 }
 
 
+// Color of air quality text and number based on value
 function airQualityColor(index) {
 	let colors = ["00CCFF","0099CC","006699","FFCC0C","F9B03D","FF9832","FF6666","FF0000","CC0000","990000","660000"];
 
@@ -726,6 +651,7 @@ function airQualityColor(index) {
 	return "#" + colors[index-1]
 }
 
+
 // Display sun and moon data
 function sunTimes(data) {
 	// Size of SVG
@@ -734,19 +660,14 @@ function sunTimes(data) {
  	circle.c = 2*Math.PI*circle.r; // Needs to be computed separately because radius needs to be set first
 	
 	// Create the SVG element
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  
-  // Set width and height
-  setAttributes(svg, {"width" : width, "height" : height, "viewBox" : "0 -90 400 240"});
+  let svg = createSVG("svg",document.getElementById("sunGauge"),{"width":width, "height":height, "viewBox":"0 -90 400 240"});
 
   // Create grey background
-  let background = document.createElementNS("http://www.w3.org/2000/svg", "circle")
-  setAttributes(background,{
+  createSVG("circle",svg,{
   	"stroke" : perc2color(0),
   	"opacity" : 0.7,
   	"stroke-dasharray" : `${circle.c/2}, ${circle.c}` // Dash length, space length
 	},"arc",circle)
-  svg.appendChild(background);
 
   let current_gmt = Date.now(); // Current time in milliseconds for position of Sun
   let midnight_gmt = new Date(current_gmt).setHours(0,0,0,0); // Midnight of beginning of day
@@ -755,37 +676,31 @@ function sunTimes(data) {
   let sunrisePercent = (data.sunrise_gmt - midnight_gmt) / (24*60*60*1000);
   let sunsetPercent = (data.sunset_gmt - midnight_gmt) / (24*60*60*1000);
 
-	let arc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    setAttributes(arc,{
-	  	"stroke" : "deepskyblue",	  	
-	  	"stroke-dasharray" : `${circle.c/2*(sunsetPercent - sunrisePercent)}, ${circle.c}`, // Dash length, space length
-	  	"stroke-dashoffset" : -circle.c/2 * sunrisePercent
-		},"arc",circle)
-	svg.appendChild(arc);
+	createSVG("circle",svg,{
+  	"stroke" : "deepskyblue",	  	
+  	"stroke-dasharray" : `${circle.c/2*(sunsetPercent - sunrisePercent)}, ${circle.c}`, // Dash length, space length
+  	"stroke-dashoffset" : -circle.c/2 * sunrisePercent
+	},"arc",circle)	
 
 	// Sunrise and sunset time labels
 	for (let i=0; i<=1; i++) {
-		let text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-		setAttributes(text,{
+		let text = createSVG("text",svg,{
 			"x" : circle.x - circle.r*Math.sin(-Math.PI * [sunrisePercent,sunsetPercent][i] + Math.PI/2)*1.2,
 			"y" : circle.y - circle.r*Math.cos(-Math.PI * [sunrisePercent,sunsetPercent][i] + Math.PI/2)*1.2,
 			"text-anchor" : ["end","start"][i]
 		})
 		text.textContent = [data.sunrise_text,data.sunset_text][i];
 		text.style.fontSize = "0.5em";
-		svg.appendChild(text);
 	}
 
 	// Sun icon (only if visible, so between sunrise and sunset)
 	if (sunPercent >= sunrisePercent && sunPercent <= sunsetPercent) {
-		let sun = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-		setAttributes(sun,{
+		createSVG("circle",svg,{
 			"cx" : circle.x - circle.r*Math.sin(-Math.PI * sunPercent + Math.PI/2)*1,
 			"cy" : circle.y - circle.r*Math.cos(-Math.PI * sunPercent + Math.PI/2)*1,
 			"r" : 20,
 			"fill" : "yellow"		
 		})
-		svg.appendChild(sun);
 	}
 
 	// Moonrise and moonset
@@ -804,52 +719,43 @@ function sunTimes(data) {
 
 	for (let i=0; i<=2; i++) {
 		if (opaqueFlag == 1) { // Opacity of 1 technically means it's opaque to background, so it IS visible!
-			let moonArc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-		  setAttributes(moonArc,{
+			createSVG("circle",svg,{
 		  	"stroke" : "indigo",
 		  	"stroke-dasharray" : `${circle.c*moonFactor/2*(arcStops[i+1] - arcStops[i])}, ${circle.c*moonFactor}`, // Dash length, space length
 		  	"stroke-dashoffset" : -circle.c*moonFactor/2 * arcStops[i],
 		  	"r" : circle.r*moonFactor,
 		  	"stroke-width" : 30,
 			},"arc",circle)
-			svg.appendChild(moonArc);
 
 			// Moon icon (only if visible)
 			if (moonPercent >= arcStops[i] && moonPercent <= arcStops[i+1]) {
 				let x = circle.x - 1.06*circle.r*moonFactor*Math.sin(-Math.PI * moonPercent + Math.PI/2)*1;
 				let y = circle.y - 1.06*circle.r*moonFactor*Math.cos(-Math.PI * moonPercent + Math.PI/2)*1;
 			
-				let moon = document.createElementNS("http://www.w3.org/2000/svg", "path");
-				setAttributes(moon,{
+				createSVG("path",svg,{
 					"d" : `M${x},${y} a8,8 0 1 0 8,10 a4,4 0 0 1 -9,-9`,
 					"fill" : "lightgrey"
 				})
-				svg.appendChild(moon);
 			}
 		}
 		opaqueFlag = 1 - opaqueFlag; // Next arc will have reverse opacity
 	}
 
 	// Moon phase
-	let moonPic = document.createElementNS("http://www.w3.org/2000/svg", "image");
-	setAttributes(moonPic,{
-		"id" : "moonPic",
+	createSVG("image",svg,{
 		"href" : data.moonPhase,
 		"x" : circle.x - 50,
 		"y" : circle.y - 75,
 		"height" : 100,
 		"width" : 100		
 	})
-	svg.appendChild(moonPic);
-
-	// Draw SVG
-  document.getElementById("sunGauge").innerHTML = "";
-  document.getElementById("sunGauge").appendChild(svg);  	
 }
 
 
 // Set attributes for SVG graphics from a given attributes object rather than doing it stupidly one line at a time
-function setAttributes(object, attributes, shape, circle) {
+function createSVG(object, parent, attributes, shape, circle) { // Last two are optional -- arcs tend to repeat similar attributes
+	let svg = document.createElementNS("http://www.w3.org/2000/svg", object);
+
 	// If a shape is given, use default values
 	let defaults = {};
 	if (shape == "arc") {
@@ -864,17 +770,27 @@ function setAttributes(object, attributes, shape, circle) {
 	  }
 	}
 
-	// Set default values
+	// Set default values if necessary
 	if (Object.keys(defaults).length != 0) {
 		for (let key in defaults) {
-    	object.setAttribute(key,defaults[key])
+    	svg.setAttribute(key,defaults[key])
     }
 	}
 
   // Any values given in attributes will override those set in defaults above based on shape name
   for (let key in attributes) {
-    object.setAttribute(key,attributes[key])
+    svg.setAttribute(key,attributes[key])
   }
+
+  // If parent container is a DIV, erase contents
+  if (parent.nodeName == "DIV") {
+  	parent.innerHTML = "";
+  }
+
+  // Add SVG to parent container
+  parent.appendChild(svg);
+
+  return svg // If needed for adding additionnal SVG elements
 }
 
 
