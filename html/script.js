@@ -1,6 +1,5 @@
 // Add event listeners
 // Set temperature buttons
-
 document.getElementById("setMinus").onclick = function() {sendValue('setTemp',Number(document.getElementById("setTemp").value) - 1)};
 document.getElementById("setPlus").onclick = function() {sendValue('setTemp',Number(document.getElementById("setTemp").value) + 1)};
 
@@ -16,7 +15,7 @@ document.getElementById("setTemp").onchange = function() {
 document.getElementById("lights").onclick = function() {sendValue('toggleItem','lights')};
 document.getElementById("jets1").onclick = function() {sendValue('toggleItem','pump1')};
 document.getElementById("jets2").onclick = function() {sendValue('toggleItem','pump2')};
-
+document.getElementById("phone").onclick = function() {sendValue('notifyByText')};
 
 // Set temp button at bottom of web page
 /*

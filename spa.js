@@ -144,6 +144,11 @@ io.on('connection', function(socket){
   	//console.log('SOCKET.IO - Received message: ' + JSON.stringify(command));
 		sendCommand(command.type,command.param,checkError,ipAddress);
   })
+
+  // Set up notificaton by text
+  socket.on('notifyByText', function() {
+		spa.notify[ipAddress] = spa.ST; // Store set temp that was asked under IP address
+  })
 })
 
 
@@ -336,7 +341,6 @@ function sendCommand(requested,param,callBackError,ipAddress) {
 		if (param >= 50 && param <= 104) { // how to know if in low/high range???
 			content = decHex(param);
 			spa.lastChangeToTemp = new Date().getTime(); // Keep track of when temperature was changed (because of saveElectricity() )
-			spa.notify[ipAddress] = content; // Store set temp that was asked under IP address
 		} else {
 			return callBackError("Error in " + requested);
 		}
