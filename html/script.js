@@ -52,70 +52,77 @@ socket.on('error',function(error) {
 let spa = {}; // Keep temperatures in memory
 
 // Receive data websockets
-socket.on('data',function(data) {
+socket.on('data',function(spaData) {
 	//console.log(data);
-	data.value = data.value.toString().padStart(2,"0"); // Put zeroes in front so it looks like hex (easier for me to spot in if statements)
-
-	if (data.id == "HF") { // Heat flag -- also contains high/low range info
-		let heat = [{"04" : "On hold", "0c" : "Not heating", "2c" : "Waiting", "1c" : "Heating"}, // High range
-								{"00" : "On hold", "08" : "Not heating", "28" : "Waiting", "18" : "Heating"}]; // Low range
-		
-		if (data.value in heat[0]) {
-			document.getElementById("HF").innerHTML = heat[0][data.value]; // Heat status
-			document.getElementById("HF_0").checked = true; // High/low range
-		} else if (data.value in heat[1]) {
-			document.getElementById("HF").innerHTML = heat[1][data.value]; // Heat status
-			document.getElementById("HF_1").checked = true; // High/low range
+	for (let key in spaData) {
+		let data = {
+			"id" : key,
+			"value" : spaData[key]
 		}
 
-	} else if (data.id == "LF") { // Lights
-		document.getElementById("lights").style.backgroundColor = {"00" : "red", "03" : "limegreen"}[data.value];
+		data.value = data.value.toString().padStart(2,"0"); // Put zeroes in front so it looks like hex (easier for me to spot in if statements)
 
-	} else if (data.id == "PP") { // Jets
-		let colors = ["red", "limegreen"];
-		document.getElementById("jets1").style.backgroundColor = colors[{"00" : [0,0], "02" : [1,0], "08" : [0,1], "0a" : [1,1]}[data.value][0]];
-		document.getElementById("jets2").style.backgroundColor = colors[{"00" : [0,0], "02" : [1,0], "08" : [0,1], "0a" : [1,1]}[data.value][1]];
+		if (data.id == "HF") { // Heat flag -- also contains high/low range info
+			let heat = [{"04" : "On hold", "0c" : "Not heating", "2c" : "Waiting", "1c" : "Heating"}, // High range
+									{"00" : "On hold", "08" : "Not heating", "28" : "Waiting", "18" : "Heating"}]; // Low range
+			
+			if (data.value in heat[0]) {
+				document.getElementById("HF").innerHTML = heat[0][data.value]; // Heat status
+				document.getElementById("HF_0").checked = true; // High/low range
+			} else if (data.value in heat[1]) {
+				document.getElementById("HF").innerHTML = heat[1][data.value]; // Heat status
+				document.getElementById("HF_1").checked = true; // High/low range
+			}
 
-	} else if (data.id == "CP") { // Circ
-		document.getElementById("circ").style.backgroundColor = {"00" : "red", "02" : "limegreen"}[data.value];
+		} else if (data.id == "LF") { // Lights
+			document.getElementById("lights").style.backgroundColor = {"00" : "red", "03" : "limegreen"}[data.value];
 
-	} else if (data.id == "2H") { // Filter start hour also has on/off info
-		// filter 2 cycle on(1) or off(0)
-		let filter2 = Math.floor(parseInt(data.value,16)/128) // this is not displayed right now
-		data.value = (parseInt(data.value,16) % 128).toString(16) // mod 128 to take out high bit
+		} else if (data.id == "PP") { // Jets
+			let colors = ["red", "limegreen"];
+			document.getElementById("jets1").style.backgroundColor = colors[{"00" : [0,0], "02" : [1,0], "08" : [0,1], "0a" : [1,1]}[data.value][0]];
+			document.getElementById("jets2").style.backgroundColor = colors[{"00" : [0,0], "02" : [1,0], "08" : [0,1], "0a" : [1,1]}[data.value][1]];
 
-	} else if (["TS","RM","M8","TF","CC"].includes(data.id)) { // Temperature scale
-		document.getElementById(data.id + "_" + parseInt(data.value,10)).checked = true;
+		} else if (data.id == "CP") { // Circ
+			document.getElementById("circ").style.backgroundColor = {"00" : "red", "02" : "limegreen"}[data.value];
 
-		if (data.id == "TS") {
-			let symbol = document.getElementsByClassName("degSymbol");
-			for (let i=0; i<symbol.length; i++) {				
-				symbol[i].innerHTML = ["&deg;F","&deg;C"][Number(data.value)]
+		} else if (data.id == "2H") { // Filter start hour also has on/off info
+			// filter 2 cycle on(1) or off(0)
+			let filter2 = Math.floor(parseInt(data.value,16)/128) // this is not displayed right now
+			data.value = (parseInt(data.value,16) % 128).toString(16) // mod 128 to take out high bit
+
+		} else if (["TS","RM","M8","TF","CC"].includes(data.id)) { // Temperature scale
+			document.getElementById(data.id + "_" + parseInt(data.value,10)).checked = true;
+
+			if (data.id == "TS") {
+				let symbol = document.getElementsByClassName("degSymbol");
+				for (let i=0; i<symbol.length; i++) {				
+					symbol[i].innerHTML = ["&deg;F","&deg;C"][Number(data.value)]
+				}
+			}
+		} else if (data.id == "ST") {	
+			let setTempMenu = document.getElementById("setTemp")
+			setTempMenu.options[0].text = `${parseInt(data.value,16)}°F`;
+			setTempMenu.options[0].value = parseInt(data.value,16);
+			setTempMenu.options[0].selected = true;
+		}
+		
+		// Temperatures udpate
+		if (["CT","ST","TA","TB","HF"].includes(data.id)) {
+			spa[data.id] = data.value;
+			if (data.id != "HF") { // Convert temperature numbers into decimal (from hexadecimal)
+				spa[data.id] = parseInt(data.value,16).toString().padStart(2,"0");
+			}		
+			if (spa.CT != undefined && spa.ST != undefined && spa.HF != undefined) { // Make sure there are values (especially on first load)
+				spaGauge(spa);
 			}
 		}
-	} else if (data.id == "ST") {	
-		let setTempMenu = document.getElementById("setTemp")
-		setTempMenu.options[0].text = `${parseInt(data.value,16)}°F`;
-		setTempMenu.options[0].value = parseInt(data.value,16);
-		setTempMenu.options[0].selected = true;
-	}
-	
-	// Temperatures udpate
-	if (["CT","ST","TA","TB","HF"].includes(data.id)) {
-		spa[data.id] = data.value;
-		if (data.id != "HF") { // Convert temperature numbers into decimal (from hexadecimal)
-			spa[data.id] = parseInt(data.value,16).toString().padStart(2,"0");
-		}		
-		if (spa.CT != undefined && spa.ST != undefined && spa.HF != undefined) { // Make sure there are values (especially on first load)
-			spaGauge(spa);
-		}
-	}
 
-	if (document.getElementById(data.id)) { // id exists ?
-		if (["CT","HH","MM","ST","TA","TB"].includes(data.id)) {
-			document.getElementById(data.id).innerHTML = parseInt(data.value,16).toString().padStart(2,"0"); // Change hex to decimal
-		} else if ([""].includes(data.id)) {
-			document.getElementById(data.id).innerHTML = data.value;
+		if (document.getElementById(data.id)) { // id exists ?
+			if (["CT","HH","MM","ST","TA","TB"].includes(data.id)) {
+				document.getElementById(data.id).innerHTML = parseInt(data.value,16).toString().padStart(2,"0"); // Change hex to decimal
+			} else if ([""].includes(data.id)) {
+				document.getElementById(data.id).innerHTML = data.value;
+			}
 		}
 	}
 })
@@ -171,7 +178,6 @@ function spaGauge(data) {
 	})
 
 	// In case temperatures out of bounds
-//data={CT:10,ST:10,TA:102,TB:106,HF:"0"}
 	let temps = [data.CT,data.ST,data.TA,data.TB];
 	let percent = [];
 	for (let i=0; i<=3; i++) {
@@ -210,9 +216,9 @@ function spaGauge(data) {
 		if ((i>1 && data.HF != "0c" && data.HF !="08") || i == 1) { // For heater temps A & B, can't be in "Not heating"
 			createSVG("line",svg,{
 	  		"x1" : thermo.x + thermo.w * percent[i],
-		  	"y1" : thermo.y ,
+		  	"y1" : thermo.y + [0,-5,-5][i-1] , // Make it stick out a little above for A/B
 		  	"x2" : thermo.x + thermo.w * percent[i],
-		  	"y2" : thermo.y + thermo.h  + 0.001,
+		  	"y2" : thermo.y + thermo.h + [0,5,5][i-1] + 0.001,
 		  	"stroke" : ["orange","darkslategray","darkslategray"][i-1],
 		  	"stroke-width" : 6
 			})
@@ -223,7 +229,7 @@ function spaGauge(data) {
 	for (let i=0; i<=1; i++) {
 		let text = createSVG("text",svg,{
 			"x" : thermo.x + thermo.w * (0.5 + (percent[i] - 0.5) * 0.60),
-			"y" : thermo.y + i*thermo.h - 15 + i*30,
+			"y" : thermo.y + i*thermo.h - 20 + i*30,
 			"fill" : ["limegreen","orange"][i],
 			"text-anchor" : "middle",
 			"dominant-baseline" : ["baseline","hanging"][i]
@@ -412,8 +418,8 @@ function drawChart(graphData) {
 			2: {targetAxisIndex:2 , color:colors.heating , type:'area'} // alernatively, "steppedArea"
 		},
 		vAxes: {
-			0: {title:'Spa (°F)', format:'decimal', titleTextStyle:{color: colors.spa,fontSize:30}, textStyle:{color: colors.spa}, minorGridlines:{count:0}, viewWindow:{min:90,max:104}},
-			1: {title:'Outdoor (°C)', format:'decimal', titleTextStyle:{color: colors.outdoor,fontSize:30}, textStyle:{color: colors.outdoor}, gridlines:{count:0}},
+			0: {title:'Spa (°F)', format:'decimal', titleTextStyle:{color: colors.spa,fontSize:30}, textStyle:{color: colors.spa,fontSize:30}, minorGridlines:{count:0}, viewWindow:{min:90,max:104}},
+			1: {title:'Outdoor (°C)', format:'decimal', titleTextStyle:{color: colors.outdoor,fontSize:30}, textStyle:{color: colors.outdoor,fontSize:30}, gridlines:{count:0}},
 			2: {format:'decimal', gridlines:{count:0}, textPosition: 'none', viewWindow:{min:0.1}}
 		}
 	}
