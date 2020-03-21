@@ -146,7 +146,7 @@ io.on('connection', function(socket){
   })
 
   // Set up notificaton by text
-  socket.on('notifyByText', function() {
+  socket.on('notifyByText', function() {  	
 		spa.notify[ipAddress] = spa.ST; // Store set temp that was asked under IP address
   })
 })

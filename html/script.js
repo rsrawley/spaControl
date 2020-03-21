@@ -15,7 +15,17 @@ document.getElementById("setTemp").onchange = function() {
 document.getElementById("lights").onclick = function() {sendValue('toggleItem','lights')};
 document.getElementById("jets1").onclick = function() {sendValue('toggleItem','pump1')};
 document.getElementById("jets2").onclick = function() {sendValue('toggleItem','pump2')};
-document.getElementById("phone").onclick = function() {sendValue('notifyByText')};
+document.getElementById("phone").onclick = function() {
+	socket.emit('notifyByText');
+	this.disabled = true;
+	this.style.backgroundImage = 'url("pictures/sms.png")';
+	this.style.backgroundSize = "80%";
+	setTimeout(() => {
+		this.disabled = false;
+		this.style.backgroundImage = 'url("pictures/phone.png")';
+		this.style.backgroundSize = "160%";
+	},2000);
+};
 
 // Set temp button at bottom of web page
 /*
@@ -99,7 +109,7 @@ socket.on('data',function(spaData) {
 				}
 			}
 		} else if (data.id == "ST") {	
-			let setTempMenu = document.getElementById("setTemp")
+			let setTempMenu = document.getElementById("setTemp");
 			setTempMenu.options[0].text = `${parseInt(data.value,16)}°F`;
 			setTempMenu.options[0].value = parseInt(data.value,16);
 			setTempMenu.options[0].selected = true;
@@ -129,7 +139,7 @@ socket.on('data',function(spaData) {
 
 // Send data to node server
 function sendValue(type,param) {
-	//console.log(type,param)
+	//console.log(type,param)	
 	socket.emit('command',{"type" : type, "param" : param});
 }
 
