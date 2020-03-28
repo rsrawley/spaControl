@@ -147,7 +147,7 @@ io.on('connection', function(socket){
 
   // Set up notificaton by text
   socket.on('notifyByText', function() {  	
-		spa.notify[ipAddress] = spa.ST; // Store set temp that was asked under IP address
+		spa.notify[ipAddress] = {"ST":spa.ST, "time":Date.now()}; // Store set temp that was asked under IP address and the time as well
   })
 })
 
@@ -179,7 +179,6 @@ function setTime() {
 		let upperLimit = new Date(2019,10,19,hours,minutes + 1);
 		if (!(spaTime.getTime() >= lowerLimit.getTime() && spaTime.getTime() <= upperLimit.getTime())) { // If not in right time, change it
 			sendCommand("setTime",[hours,minutes],checkError);
-//			console.log(lowerLimit,spaTime,upperLimit,spa.HH,spa.MM)
 		}
 	}
 }
@@ -287,11 +286,13 @@ function readData(data) {
 
 							// Text phone if set temp was reached
 							if (codeLine[i] == "CT") { // CT = current temperature
-								for (let key in spa.notify) {
-									if (spa.notify[key] == message.content[i]) {
-										textPhone("ST",key,parseInt(message.content[i],16)); // Store set temp that was asked under IP address
-										delete spa.notify[key]; // Remove the notification for that IP address
-									}
+								for (let ipAddress in spa.notify) {
+									if (spa.notify[ipAddress].ST == spa.CT) {
+										textPhone("ST",ipAddress,parseInt(spa.CT,16)); // Store set temp that was asked under IP address
+										delete spa.notify[ipAddress]; // Remove the notification for that IP address
+									} else if (Date.now() + 6 * 60 * 60 * 1000 > spa.notify[ipAddress].time) { // More than 6 hours since asked for text, so delete
+										delete spa.notify[ipAddress]; // Remove the notification for that IP address
+									}									
 								}
 							}
 						}
@@ -308,10 +309,10 @@ function textPhone(messageType,ipAddress,messageContent) {
 		"ST" : `Hot tub set temperature of ${messageContent}F reached.`
 	}
 
-	if (ipAddress in addressBook) {		
+	if (ipAddress in addressBook) {
 		gmail({
 			"recipient" : addressBook[ipAddress],
-			"subject"   : "",
+			"subject"   : "test24",
 			"message"   : messageTemplate[messageType]
 		})
 	}
@@ -579,7 +580,7 @@ function checksum(hexstring) {
   return crc.toString(16).padStart(2,"0");
 }
 
-console.log("Ready " + new Date());
+console.log("Running on " + new Date());
 
 // Get some data for various settings (I still don't know what some of the responses mean...)
 setTimeout(function() {
