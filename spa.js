@@ -311,8 +311,7 @@ function textPhone(messageType,ipAddress,messageContent) {
 
 	if (ipAddress in addressBook) {
 		gmail({
-			"recipient" : addressBook[ipAddress],
-			"subject"   : "test24",
+			"recipient" : addressBook[ipAddress],			
 			"message"   : messageTemplate[messageType]
 		})
 	}
