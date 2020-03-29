@@ -75,7 +75,7 @@ process.on('SIGINT', function () {
 
 // Set up client requests for weather
 let request = require("request2.0");
-setTimeout(fetchWeather,60000); // Initial call -- wait one minute for weather service to start
+setTimeout(fetchWeather,30000); // Initial call -- wait half a minute for weather service to start
 setInterval(fetchWeather, 5 * 60000); // Every 5 minutes after that
 
 function fetchWeather() {
@@ -146,7 +146,7 @@ io.on('connection', function(socket){
   })
 
   // Set up notificaton by text
-  socket.on('notifyByText', function() {  	
+  socket.on('notifyByText', function() {
 		spa.notify[ipAddress] = {"ST":spa.ST, "time":Date.now()}; // Store set temp that was asked under IP address and the time as well
   })
 })
@@ -214,7 +214,7 @@ const port = new SerialPort('/dev/ttyAMA0', {
 const parser = port.pipe(new Delimiter({delimiter: Buffer.from('7e', 'hex') }));
 parser.on('data', readData);
 
-function readData(data) {
+function readData(data,testing) {
 	data = data.hexSlice(); // Convert to hexadecimal string
 
 	// Extract message length (first byte) and message type (next 3 bytes)
@@ -232,9 +232,8 @@ function readData(data) {
 	}
 
 	if (data.length == message.length*2 && checksum(data.substring(0,data.length-2)) == message.checksum) { // Check proper message length and checksum
-
 		// Insert spaces every two characters to match "human readable" object type defined at top of program
-		message.type = message.type.substr(0,2) + " " + message.type.substr(2,2) + " " + message.type.substr(4,2);
+		message.type = message.type.match(/../g).join(" ");//message.type.substr(0,2) + " " + message.type.substr(2,2) + " " + message.type.substr(4,2);
 
 		// For testing purposes
 		//displayMessages(message.type,message.content);
@@ -280,6 +279,7 @@ function readData(data) {
 			if (codeLine != undefined) { // Has a code line been defined for this message type ?
 				for (let i=0; i<message.length; i++) {
 					if (codeLine[i] in codes) { // If a code exists in codeLine, store in spa{}
+
 						if (spa[codeLine[i]] != message.content[i]) { // Only update if not the same value
 							spa[codeLine[i]] = message.content[i]; // Update items in memory
 							io.emit('data',{[codeLine[i]] : spa[codeLine[i]]}); // Send to all connected clients
@@ -287,12 +287,13 @@ function readData(data) {
 							// Text phone if set temp was reached
 							if (codeLine[i] == "CT") { // CT = current temperature
 								for (let ipAddress in spa.notify) {
-									if (spa.notify[ipAddress].ST == spa.CT) {
+
+									if (Date.now() > spa.notify[ipAddress].time + 6 * 3600 * 1000) { // More than 6 hours since asked for text, so delete
+										delete spa.notify[ipAddress]; // Remove the notification for that IP address
+									} else if (spa.notify[ipAddress].ST == spa.CT) {
 										textPhone("ST",ipAddress,parseInt(spa.CT,16)); // Store set temp that was asked under IP address
 										delete spa.notify[ipAddress]; // Remove the notification for that IP address
-									} else if (Date.now() + 6 * 60 * 60 * 1000 > spa.notify[ipAddress].time) { // More than 6 hours since asked for text, so delete
-										delete spa.notify[ipAddress]; // Remove the notification for that IP address
-									}									
+									}
 								}
 							}
 						}
@@ -303,18 +304,49 @@ function readData(data) {
 	}
 }
 
+////////////////////For forcing messages for testing only !!!
+//test(); // one line to comment out
+function test() {
+	setTimeout(function(){
+		console.log("testing now");
+		let data="ffaf1314005f0e1600006060040c000002000000000004600100001e0000"
+	  //                  CT
+
+		// Compute length of final message (+1 for length byte and +1 for checksum byte)
+		let length = data.length/2 + 2;
+		data = length.toString(16).padStart(2,"0") + data;
+
+		// Compute CRC8 checksum
+		let crc = checksum(data);
+		data = data + crc;
+
+		readData(Buffer.from(data,'hex'),1)
+	},8000)
+}
+///////////////////////
+
 
 function textPhone(messageType,ipAddress,messageContent) {
 	let messageTemplate = {
-		"ST" : `Hot tub set temperature of ${messageContent}F reached.`
+		"ST" : `Hot tub has reached ${messageContent} F.\nOutdoor ${spa.weather.current.temperature} C, feels like ${spa.weather.current.feelsLike} C.\nWind ${spa.weather.current.wind} kph, gusting ${spa.weather.current.wind} kph.${takeaHat()}`
 	}
 
 	if (ipAddress in addressBook) {
+		console.log("Texting phone number listed under " + ipAddress);
 		gmail({
-			"recipient" : addressBook[ipAddress],			
+			"recipient" : addressBook[ipAddress],
 			"message"   : messageTemplate[messageType]
 		})
 	}
+}
+
+
+// Determines whether to recommend to take a hat or not
+function takeaHat() {
+	if (spa.weather.current.temperature <= 0 && spa.weather.current.wind >= 10) {
+		return "\nTake a hat!"
+	}
+	return "" // Return nothing if conditions not met
 }
 
 
@@ -596,7 +628,7 @@ setTimeout(function() {
 setTimeout(function() {
 	if (spa.TC == "00") { // Only send command if not activated (it's a toggle command)
 		sendCommand("setABTemp","",checkError);
-		console.log("A/B temperature sensor activated")
+		console.log("A/B temperature sensor activated");
 	} else {
 		console.log("A/B temperature sensor already active")
 	}
@@ -703,7 +735,7 @@ function setTimer(hour,saveElectricityFlag) {
 	setTimeout(getTimeoutFunc(hour,saveElectricityFlag),timeDelay);
 }
 
-function getTimeoutFunc(hour,saveElectricityFlag) {	
+function getTimeoutFunc(hour,saveElectricityFlag) {
 	return function() {
 		saveElectricity(saveElectricityFlag);
 		setTimer(hour,saveElectricityFlag);
