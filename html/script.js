@@ -744,9 +744,10 @@ function sunTimes(data) {
 
 			// Moon icon (only if visible)
 			if (moonPercent >= arcStops[i] && moonPercent <= arcStops[i+1]) {
-				let x = circle.x - 1.06*circle.r*moonFactor*Math.sin(-Math.PI * moonPercent + Math.PI/2)*1;
-				let y = circle.y - 1.06*circle.r*moonFactor*Math.cos(-Math.PI * moonPercent + Math.PI/2)*1;
-			
+				// For some reason, computing moon position doesn't line up with SVG arc, hence the 1.01 and 1.07 adjustment (making it more like an ellipse...)
+				let x = circle.x - 1.01*circle.r*moonFactor*Math.sin(-Math.PI * moonPercent + Math.PI/2)*1;
+				let y = circle.y - 1.07*circle.r*moonFactor*Math.cos(-Math.PI * moonPercent + Math.PI/2)*1;
+
 				createSVG("path",svg,{
 					"d" : `M${x},${y} a8,8 0 1 0 8,10 a4,4 0 0 1 -9,-9`,
 					"fill" : "lightgrey"
