@@ -127,14 +127,6 @@ io.on('connection', function(socket){
   // Initial connection: send all params to client that just connected
 	socket.emit('data',(({ outbox, temp, ...o }) => o)(spa)); // Clone spa object and remove key "outbox" and "temp" -- this is a very neat one liner!
 
-/*
-  for (let key in spa) {
-		if (key != "outbox" && key != "temp") { // "temp" can be removed -- it's for helping finding codes
-			socket.emit('data',{"id" : key, "value" : spa[key]});
-		}
-	}
-*/
-
 	// Send initial graph data
 	socket.emit('graphData',graphData);
 	socket.emit('weather',spa.weather); // Send to all connected clients
@@ -185,8 +177,9 @@ function setTime() {
 
 // Store all items in memory
 let spa = {
-	"outbox" : [], // Messages waiting to be sent to spa
-	"notify" : {} // Ip addresses for text notification
+	outbox : [], // Messages waiting to be sent to spa
+	notify : {}, // Ip addresses for text notification
+	rates : {} // Cooling and heating rates
 };
 
 spa.testing=[]; // Only used for testing (displaying changes in configs)
@@ -282,7 +275,7 @@ function readData(data,testing) {
 
 						if (spa[codeLine[i]] != message.content[i]) { // Only update if not the same value
 							spa[codeLine[i]] = message.content[i]; // Update items in memory
-							io.emit('data',{[codeLine[i]] : spa[codeLine[i]]}); // Send to all connected clients
+							io.emit('data',{[codeLine[i]] : spa[codeLine[i]]}); // Send to all connected clients (note: 
 
 							// Text phone if set temp was reached
 							if (codeLine[i] == "CT") { // CT = current temperature
@@ -295,6 +288,10 @@ function readData(data,testing) {
 										delete spa.notify[ipAddress]; // Remove the notification for that IP address
 									}
 								}
+							}
+
+							if (["CT","ST"].includes(codeLine[i])) {
+								estimatedTime(); // If CT OR ST changed, recompute estimated time based on set temperature ST
 							}
 						}
 					}
@@ -370,13 +367,13 @@ function sendCommand(requested,param,callBackError,ipAddress) {
   	type = "10 bf 20";
 		//range is 80-104 for F, 26-40 for C in high range
 		//range is 50-80 for F, 10-26 for C in low range
-		if (param >= 50 && param <= 104) { // how to know if in low/high range???
+		if ((param >= 50 && param <= 80 && ["00","08","28","18"].includes(spa.HF)) || (param >= 80 && param <= 104 && ["04","0c","2c","1c"].includes(spa.HF))) { // Using HF to figure out which range temperature is sett (high/low)
 			content = decHex(param);
 			spa.lastChangeToTemp = new Date().getTime(); // Keep track of when temperature was changed (because of saveElectricity() )
 		} else {
 			return callBackError("Error in " + requested);
 		}
-
+		
 	} else if (requested == "setTime") {  // Expects param to be in [HH,MM] format // verified
   	type = "10 bf 21";
 
@@ -624,6 +621,7 @@ setTimeout(function() {
 	}
 },2000);
 
+
 // Active A/B temperature readings
 setTimeout(function() {
 	if (spa.TC == "00") { // Only send command if not activated (it's a toggle command)
@@ -665,46 +663,52 @@ setInterval(function() {
 	// Time to nearest minute[0], spa temperature[1], outside temperature[2], heat status[3]
 	graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(spa.CT,16),parseInt(spa.weather.current.temperature,10),heatStatus]);
 
-	// Keep only last 24 hours data (12 data points per hour and 24 h)
+	// Keep only last 24 hours data (12 data points per hour and 24 h) -- 5 minutes resolution
 	if (graphData.length >= 288) {
 		graphData.shift()
 	}
 
 	io.emit('graphData',graphData);
-	
-	// Find last time period heating was on
-	
-	
+},5*60000);
+
+
+function getRates() {
 	// Compute delta time and delta temp for heating rate
+	let periods = [[],[]]; // [0,1 : cooling/heating][ [ [time,temperature],[time,temperature] ] , [ [time,temperature],[time,temperature] ] ]
+	let lastHeatingRead;
 	
-	// Find last time temperature was at highest and heating started OR time for lowest temperature started
-	let last = graphData.length-1;
-	let heatingPeriods = [];
-	let coolingPeriods = [];
-	
-	// Is it heating or not?
-	if (graphData[last][3] == 1) {
-		heatingPeriods.unshift(last)
-	} else {
-		coolingPeriods.unshift(last)
+	// Pick out heating and cooling periods
+	for (let i = 0; i < graphData.length; i++) {
+		// If it's not heating, it's cooling
+		if (graphData[i][3] != lastHeatingRead) {
+			periods[graphData[i][3]].push([])
+		}
+		periods[graphData[i][3]][periods[graphData[i][3]].length - 1].push([graphData[i][0],graphData[i][1]]);
+		
+		lastHeatingRead = graphData[i][3];
 	}
 	
-	for (let i=last-1; i>=0; i--) { // Go backwards through the array, skipping the very last one
-		// Check if heating and that we're still in a heating period
-		if (graphData[i][3] == 1 && heatingPeriods[0]<coolingPeriods[0]) {
-			heatingPeriods.unshift(i)
-			coolingPeriods.unshift(i+1)
-		} else {
-			heatingPeriods.unshift(i+1)
-			coolingPeriods.unshift(i)
+	// Find the longest periods of cooling and heating
+	let maxLength = [0,0];
+	let longestInterval = [-1,-1]; // Set -1 to detect if it was modified
+	for (let i = 0; i <=1; i++) {
+		for (let j = 0; j < periods[i].length; j++) {
+			if (periods[i][j].length > maxLength[i]) {
+				maxLength[i] = periods[i][j].length;
+				longestInterval[i] = j;
+			}
 		}
 	}
 	
-	// Compute delta time and delta temp for cooling rate
+	// Compute delta time and delta temp for cooling rate (should be in deg F per second)	
+	for (let i = 0; i <=1; i++) {
+		if (longestInterval[i] != -1) { // If we found an interval
+			spa.rates[["cool","heat"][i]] = polysolve(periods[i][longestInterval[i]],1)[1] * 60; // Only pick out the slope, mutiply by 60 for per minute rate		
+		}
+	}
+}
 
-	// example : 
-	
-},5*60000);
+
 
 // Save to file every hour
 setInterval(function() {
@@ -754,10 +758,11 @@ function saveElectricity(activate) {
 }
 
 
-
+// Polynomial best fit solver
 function polysolve(valeurs,degree) {
   // Référence : https://arachnoid.com/sage/polynomial.html
-  let n = valeurs.length; // Nombre de données
+  // S'attend à un tableau de tableaux (de données) : [ [x1,y1] , [x2,y2] , ... ]
+	let n = valeurs.length; // Nombre de données
   
   // Prendre les valeurs de x and la 1e colonne et y dans la 2e
   let x = [], y = [];
@@ -817,4 +822,29 @@ function polysolve(valeurs,degree) {
   }
 	
   return coefficients // Array qui contient les coefficients de x^0 à x^n
+}
+
+
+// Figures out how much time to heat the hot tub
+function estimatedTime() {
+	getRates(); // Compute heating and cooling rates
+
+	let deltaT = parseInt(spa.ST,16) - parseInt(spa.CT,16);
+	let rate = 0;
+	
+	if (deltaT > 0) { // We're heating
+		rate = spa.rates.heat		
+	} else if (deltaT < 0) { // We're letting it cool
+		rate = spa.rates.cool
+	}
+	
+	let time = new Date();
+	if (rate != 0) {
+		time.setMinutes(time.getMinutes() + deltaT/rate);
+		spa.estimatedTime = `(${time.getHours().toString().padStart(2,"0")}:${time.getMinutes().toString().padStart(2,"0")})`;
+	} else {
+		spa.estimatedTime = ""
+	}
+	
+	io.emit('data',{estimatedTime : spa.estimatedTime}); // Converting date objet to HH:MM
 }

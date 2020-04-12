@@ -14,6 +14,9 @@ body {
 .grid-container-status {
   display: grid;
   grid-template-columns: 100px 1fr 1fr;
+  grid-template-areas: "icon spa time"
+  										 "icon spa status"
+  										 "outdoor spa set"
 }
 
 .grid-container-status > div {
@@ -22,9 +25,25 @@ body {
 	align-items: center;
 	justify-content: center;
 }
-
-.statusGridSpan {
-	grid-row: 1 / span 3;
+.grid-container-status .icon {
+  grid-area: icon;
+}
+.grid-container-status .spa {
+  grid-area: spa;
+}
+.grid-container-status .time {
+  grid-area: time;
+}
+.grid-container-status .status {
+  grid-area: status;
+ 	background-color: black;
+}
+.grid-container-status .outdoor {
+  grid-area: outdoor;
+	font-size: 35px;
+}
+.grid-container-status .set {
+  grid-area: set;
 }
 
 #setMinus,#setPlus {
@@ -69,10 +88,6 @@ button {
 #HF {
 	color: red;
 	font-size: 40px;
-}
-
-.statusHeat {
-	background-color: black;
 }
 
 #setTemp {

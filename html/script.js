@@ -57,19 +57,18 @@ socket.on('error',function(error) {
 	document.getElementById("error").innerHTML = error;
 })
 
-
 let spa = {}; // Keep temperatures in memory
 
 // Receive data websockets
 socket.on('data',function(spaData) {
-	//console.log(data);
+	console.log(spaData);
 	for (let key in spaData) {
 		let data = {
 			"id" : key,
 			"value" : spaData[key]
 		}
 
-		data.value = data.value.toString().padStart(2,"0"); // Put zeroes in front so it looks like hex (easier for me to spot in if statements)
+//		data.value = data.value.toString().padStart(2,"0"); // Put zeroes in front so it looks like hex (easier for me to spot in  statements)
 
 		if (data.id == "HF") { // Heat flag -- also contains high/low range info
 			let heat = [{"04" : "On hold", "0c" : "Not heating", "2c" : "Waiting", "1c" : "Heating"}, // High range
@@ -129,7 +128,7 @@ socket.on('data',function(spaData) {
 		if (document.getElementById(data.id)) { // id exists ?
 			if (["CT","HH","MM","ST","TA","TB"].includes(data.id)) {
 				document.getElementById(data.id).innerHTML = parseInt(data.value,16).toString().padStart(2,"0"); // Change hex to decimal
-			} else if ([""].includes(data.id)) {
+			} else if (! ["HF"].includes(data.id)) {
 				document.getElementById(data.id).innerHTML = data.value;
 			}
 		}
@@ -255,6 +254,7 @@ socket.on('weather',function(weatherData) {
 	if (weatherData != undefined) {
 		// Current weather picture
 		document.getElementById("icon").src = weatherData.current.icon;
+		document.getElementById("outdoor").innerHTML = weatherData.current.temperature + "°C";
 
 		// Temperature gauge values
 		temperatureGauge({
@@ -582,11 +582,13 @@ function windGauge(data) {
   	}
 
   	let percentage = values[i] / max;
-  	createSVG("circle",svg,{
-	  	"stroke" : perc2color(percentage),
-	  	"opacity" : opacity[i],
-	  	"stroke-dasharray" : `${circle.c/2*percentage}, ${circle.c}` // Dash length, space length
-		},"arc",circle)
+  	if (percentage != 0) {
+	  	createSVG("circle",svg,{
+		  	"stroke" : perc2color(percentage),
+		  	"opacity" : opacity[i],
+		  	"stroke-dasharray" : `${circle.c/2*percentage}, ${circle.c}` // Dash length, space length
+			},"arc",circle)
+		}
 	}
 
 	// Add text in centre of gauge
