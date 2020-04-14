@@ -1,3 +1,7 @@
+* {
+	touch-action: manipulation;
+}
+
 body {
 	/*background-image: url("pictures/light-blue-background.jpg");
 	background-repeat: round;*/
@@ -33,6 +37,7 @@ body {
 }
 .grid-container-status .time {
   grid-area: time;
+	font-size: 44px;
 }
 .grid-container-status .status {
   grid-area: status;

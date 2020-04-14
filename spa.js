@@ -348,7 +348,7 @@ function takeaHat() {
 
 
 function sendCommand(requested,param,callBackError,ipAddress) {
-	console.log(requested)
+	//console.log(requested)
   // Some messages need config requests to be sent first
   let type;
   let content = "";
@@ -842,8 +842,9 @@ function estimatedTime() {
 	if (rate != 0) {
 		time.setMinutes(time.getMinutes() + deltaT/rate);
 		spa.estimatedTime = `(${time.getHours().toString().padStart(2,"0")}:${time.getMinutes().toString().padStart(2,"0")})`;
+		spa.deltaT = deltaT; // Just for something to check for background color in script.js
 	} else {
-		spa.estimatedTime = ""
+		spa.estimatedTime = "";		
 	}
 	
 	io.emit('data',{estimatedTime : spa.estimatedTime}); // Converting date objet to HH:MM

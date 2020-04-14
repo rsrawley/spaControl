@@ -60,7 +60,8 @@ socket.on('error',function(error) {
 let spa = {}; // Keep temperatures in memory
 
 // Receive data websockets
-socket.on('data',function(spaData) {	
+socket.on('data',function(spaData) {
+	console.log(spaData);
 	for (let key in spaData) {
 		let data = {
 			"id" : key,
@@ -129,15 +130,11 @@ socket.on('data',function(spaData) {
 				document.getElementById(data.id).innerHTML = parseInt(data.value,16).toString().padStart(2,"0"); // Change hex to decimal
 			} else if (! ["HF"].includes(data.id)) {
 				document.getElementById(data.id).innerHTML = data.value;
-			}
-		}
-		
-		// Background color for estimated time
-		if (data.id == "deltaT") {
-			if (data.value < 0) { // Cooling
-				document.getElementById("estimatedTime").style.backgroundColor = "blue"
-			} else {
-				document.getElementById("estimatedTime").style.backgroundColor = "red"
+console.log(spa.ST,spa.CT)				if (data.id == "estimatedTime" && spa.ST < spa.CT) { // Cooling
+					document.getElementById(data.id).style.backgroundColor = "blue"
+				} else {
+					document.getElementById(data.id).style.backgroundColor = "red"
+				}
 			}
 		}
 	}
