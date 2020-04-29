@@ -117,6 +117,33 @@ const server = require('http').createServer(app);
 server.listen(9000); // Start the webserver on port 9000
 app.use(express.static(__dirname + '/html')); // Tell the server location of the static web pages
 
+// Set up API -- information request
+app.get('/:getInfo',function(req,res,next) {
+	let validReq = ["CT","ST"];
+
+	if (req.params.apiRequest != undefined) { // Valid request
+		if (validReq.includes(req.params.apiRequest)) {
+			res.status(200).json(parseInt(spa[req.params.apiRequest],16));
+		} else {
+			res.status(400).json("Requested forecast type not available.  Available types are: " + validReq.toString())
+		}
+	}
+})
+
+// Set up API -- action request
+app.get('/:action',function(req,res,next) {
+	let validReq = ["ST"];
+
+	if (req.params.apiRequest != undefined) { // Valid request
+		if (validReq.includes(req.params.apiRequest)) {
+			res.status(200).json("OK");
+		} else {
+			res.status(400).json("Requested forecast type not available.  Available types are: " + validReq.toString())
+		}
+	}
+})
+
+
 // Web socket server
 io = require('socket.io').listen(server);
 
@@ -373,7 +400,7 @@ function sendCommand(requested,param,callBackError,ipAddress) {
 		} else {
 			return callBackError("Error in " + requested);
 		}
-		
+
 	} else if (requested == "setTime") {  // Expects param to be in [HH,MM] format // verified
   	type = "10 bf 21";
 
@@ -676,7 +703,7 @@ function getRates() {
 	// Compute delta time and delta temp for heating rate
 	let periods = [[],[]]; // [0,1 : cooling/heating][ [ [time,temperature],[time,temperature] ] , [ [time,temperature],[time,temperature] ] ]
 	let lastHeatingRead;
-	
+
 	// Pick out heating and cooling periods
 	for (let i = 0; i < graphData.length; i++) {
 		// If it's not heating, it's cooling
@@ -684,10 +711,10 @@ function getRates() {
 			periods[graphData[i][3]].push([])
 		}
 		periods[graphData[i][3]][periods[graphData[i][3]].length - 1].push([graphData[i][0],graphData[i][1]]);
-		
+
 		lastHeatingRead = graphData[i][3];
 	}
-	
+
 	// Find the longest periods of cooling and heating
 	let maxLength = [0,0];
 	let longestInterval = [-1,-1]; // Set -1 to detect if it was modified
@@ -699,11 +726,11 @@ function getRates() {
 			}
 		}
 	}
-	
-	// Compute delta time and delta temp for cooling rate (should be in deg F per second)	
+
+	// Compute delta time and delta temp for cooling/heating rate (should be in deg F per second)
 	for (let i = 0; i <=1; i++) {
 		if (longestInterval[i] != -1) { // If we found an interval
-			spa.rates[["cool","heat"][i]] = polysolve(periods[i][longestInterval[i]],1)[1] * 60; // Only pick out the slope, mutiply by 60 for per minute rate		
+			spa.rates[["cool","heat"][i]] = polysolve(periods[i][longestInterval[i]],1)[1] * 60; // Only pick out the slope, mutiply by 60 for per minute rate
 		}
 	}
 }
@@ -763,37 +790,37 @@ function polysolve(valeurs,degree) {
   // Référence : https://arachnoid.com/sage/polynomial.html
   // S'attend à un tableau de tableaux (de données) : [ [x1,y1] , [x2,y2] , ... ]
 	let n = valeurs.length; // Nombre de données
-  
+
   // Prendre les valeurs de x and la 1e colonne et y dans la 2e
   let x = [], y = [];
   for (let i=0; i<n; i++) {
     x[i] = valeurs[i][0];
     y[i] = valeurs[i][1];
   }
-  
+
   let m = []; // Matrice à résoudre
   for (let r=0; r<=degree; r++) { // Row (r)
     m[r] = []
-    
+
     for (let c=0; c<=degree; c++) { // Column (c)
       m[r][c] = 0
-      
+
       for (let i=0; i<n; i++) { // Somme jusqu'à n-1
         m[r][c] = m[r][c] + Math.pow(x[i],r+c) // x[i]^(r+c)
       }
     }
   }
-  
-  // On rajoute la matrice à droite comme une colonne dans la matrice à gauche  
+
+  // On rajoute la matrice à droite comme une colonne dans la matrice à gauche
   for (let r=0; r<=degree; r++) { // Row (r)
     let somme = 0;
-    
+
     for (let i=0; i<n; i++) { // Somme jusqu'à n-1
       somme = somme + Math.pow(x[i],r)*y[i]
     }
     m[r].push(somme);
   }
-  
+
   // Il faut résoudre la matrice avec élimination Gauss-Jordan
   for (let i=0; i<=degree; i++) {
     let coeff = m[i][i];
@@ -801,26 +828,26 @@ function polysolve(valeurs,degree) {
     for (let c=0; c<=degree+1; c++) { // Column (c)
       m[i][c] = m[i][c] / coeff // Ajuster tous les coefficients pour avoir un 1 dans la colonne qu'on veut résoudre
     }
-    
+
     // Ajuster toute la matrice pour avoir des zéros partout dans la colonne, sauf celle qu'on vient d'ajuster ci-haut
     for (let r=0; r<=degree; r++) {  // Row (r)
       if (r != i) {
         let coeff = m[r][i];
-        
+
         for (let c=0; c<=degree+1; c++) { // Column (c)
           m[r][c] = m[r][c] - coeff * m[i][c]
-        }        
+        }
       }
     }
   }
-  
+
   // Valeur de retour
   let coefficients = [];
-  
+
   for (let i=0; i<=degree; i++) {
     coefficients.push(m[i][degree+1])
   }
-	
+
   return coefficients // Array qui contient les coefficients de x^0 à x^n
 }
 
@@ -831,21 +858,21 @@ function estimatedTime() {
 
 	let deltaT = parseInt(spa.ST,16) - parseInt(spa.CT,16);
 	let rate = 0;
-	
+
 	if (deltaT > 0) { // We're heating
-		rate = spa.rates.heat		
+		rate = spa.rates.heat
 	} else if (deltaT < 0) { // We're letting it cool
 		rate = spa.rates.cool
 	}
-	
+
 	let time = new Date();
 	if (rate != 0) {
 		time.setMinutes(time.getMinutes() + deltaT/rate);
 		spa.estimatedTime = `(${time.getHours().toString().padStart(2,"0")}:${time.getMinutes().toString().padStart(2,"0")})`;
 		spa.deltaT = deltaT; // Just for something to check for background color in script.js
 	} else {
-		spa.estimatedTime = "";		
+		spa.estimatedTime = "";
 	}
-	
+
 	io.emit('data',{estimatedTime : spa.estimatedTime}); // Converting date objet to HH:MM
 }

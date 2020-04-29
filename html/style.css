@@ -58,6 +58,10 @@ body {
 	background-color: transparent;
 }
 
+#estimatedTime {
+	color: white;
+}
+
 #setMinus {
 	background-image: url("pictures/down.png");
 }
@@ -69,7 +73,7 @@ body {
 #phone {
 	background-color: transparent;
 	background-image: url("pictures/phone.png");
-  background-repeat: no-repeat;
+	 background-repeat: no-repeat;
 	background-size: 160%;
 	background-position: center;
 }
@@ -126,13 +130,11 @@ button {
 	grid-column: 1 / span 2;
 }
 
-
 /* Definitions for round meters (arcs) */
-.arc {
+.arc { 
 	transform: rotate(180deg);
-  transform-origin: center center;
+	transform-origin: center center;
 }
-
 
 /* Definitions for radio toggle */
 .switch-field {
