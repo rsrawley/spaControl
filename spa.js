@@ -34,7 +34,17 @@ const fs = require('fs');
 
 // Gmail setup
 const gmail = require(`${path}/libraries/gmail.js`)(`${path}/../spa.credentials`);
+
 const addressBook = JSON.parse(fs.readFileSync(`${path}/../spa.addressbook`,'utf8'));
+/*
+- addressBook is a text file that matches IP addresses to emails
+- when a user asks for text notification in the web interface, the IP address is obtained 
+so that it can be matched up in the address book to an email address, and finally sent to an "email to text server"
+- text file has this format, one IP per line :
+{
+"192.168.1.someNumber" : "phoneNumber@someProvider",
+}
+*/
 
 // Set up command line access
 cmd = require('node-cmd');
