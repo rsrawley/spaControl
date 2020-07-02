@@ -59,9 +59,12 @@ function checkConnectivity(numFails) {
 				numFails++;
 
 				if (numFails == 5) {
-					cmd.run('sudo ifdown wlan0 && sudo ifup wlan0')
+					console.log("Toggling radios");
+					cmd.run('sudo ip link set wlan0 down && sudo ip link set wlan0 up');
+					console.log("Radios toggled")
 				} else if (numFails == 10) {
-					cmd.run('sudo reboot')
+					console.log("Attempting reboot");
+					cmd.run('sudo reboot');
 				}
 			} else {
 				numFails = 0
@@ -753,7 +756,7 @@ setInterval(function() {
   	if (err) {
   		console.log("Error saving graph data.")
   	} else {
-  		console.log('Graph data saved.');
+  		//console.log('Graph data saved.');
   	}
 	});
 },60*60000);

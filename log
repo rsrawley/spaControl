@@ -1,0 +1,13 @@
+Running on Thu Jul 02 2020 12:04:38 GMT-0400 (Eastern Daylight Time)
+Graph data was read from file.
+A/B temperature sensor already active
+
+<--- Last few GCs --->
+
+[553:0x37736a0]  1166278 ms: Scavenge 694.5 (723.4) -> 692.8 (723.4) MB, 10.6 / 0.0 ms  (average mu = 0.173, current mu = 0.095) allocation failure 
+[553:0x37736a0]  1166386 ms: Scavenge 694.6 (723.4) -> 692.8 (723.4) MB, 10.4 / 0.0 ms  (average mu = 0.173, current mu = 0.095) allocation failure 
+[553:0x37736a0]  1166493 ms: Scavenge 694.7 (723.4) -> 692.9 (727.4) MB, 10.8 / 0.0 ms  (average mu = 0.173, current mu = 0.095) allocation failure 
+
+
+<--- JS stacktrace --->
+
