@@ -16,3 +16,5 @@ yes to enable serial
 
 # crontab
 @reboot /home/pi/spaControl/startHotTub.sh
+
+Uses port 9000
