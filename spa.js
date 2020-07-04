@@ -2,6 +2,7 @@
 Balboa controller spa interface
 Uses RS485 protocol
 
+Ref: https://github.com/ccutrer/balboa_worldwide_app/wiki
 
 Smart heating ?
 
@@ -50,7 +51,7 @@ so that it can be matched up in the address book to an email address, and finall
 cmd = require('node-cmd');
 
 // Check every minute for internet connectivity
-checkConnectivity(0);
+//checkConnectivity(0);
 
 function checkConnectivity(numFails) {
 	cmd.get('ping -c 5 8.8.8.8',
@@ -192,11 +193,7 @@ function checkError(error) {
 
 
 // Every minute, check the time is right and adjust (if spa turned off, or daylight saving change)
-setInterval(function () {setTime()},60000)
-
-// Every 10 minutes, store spa temperature in array and write to file
-
-
+setInterval(function () {setTime()}, 60000);
 function setTime() {
 	if (spa.HH != undefined) { // Make sure we already have a connection
 		// It's easier to use JS date objects to handle checking before and after midnight
@@ -219,7 +216,13 @@ function setTime() {
 let spa = {
 	outbox : [], // Messages waiting to be sent to spa
 	notify : {}, // Ip addresses for text notification
-	rates : {} // Cooling and heating rates
+	rates : {}, // Cooling and heating rates
+	registration : {
+		registered : false, // Will keep trying to register before sending anything
+		channel : 0, // Channel to listen on
+		clearToSend : "", // Clear to send message from board (format : *channel* bf 06)
+		tries: 0
+	}
 };
 
 spa.testing=[]; // Only used for testing (displaying changes in configs)
@@ -227,23 +230,10 @@ spa.testing=[]; // Only used for testing (displaying changes in configs)
 // Set up message translation matrix (codes must be unique as they are used to store data in spa{})
 let incoming = require(`${path}/spaCodes.js`).incoming;
 
-// Some response codes have multiple aliases
-incoming["ff af 26"] = incoming["10 bf 26"];
-
-// Responses to ignore
-let ignore = [
-	"10 bf 06", // Ready to send command?
-	"10 bf 07", // Nothing to send response from panel?
-	"fe bf 00", // No idea, emitted every 1 second roughly
-	"ff af 13" // Regular status updates (will be caught by functions, doesn't count as "response confirmation" from motherboard)
-];
-
 // Set up serial port
 const SerialPort = require('serialport');
 const Delimiter = require('@serialport/parser-delimiter');
-const port = new SerialPort('/dev/ttyAMA0', {
-  baudRate: 115200
-});
+const port = new SerialPort('/dev/ttyAMA0', { baudRate: 115200 });
 const parser = port.pipe(new Delimiter({delimiter: Buffer.from('7e', 'hex') }));
 parser.on('data', readData);
 
@@ -269,41 +259,60 @@ function readData(data,testing) {
 		message.type = message.type.match(/../g).join(" ");//message.type.substr(0,2) + " " + message.type.substr(2,2) + " " + message.type.substr(4,2);
 
 		// For testing purposes
-		//displayMessages(message.type,message.content);
-
-		// Has a message already been sent to motherboard ?
-		// Verify that response is not in ignore list and is not the regular status update -- any other response will be deemed as confirmation of command received
-		if (spa.readyToSend == "waiting on response"  && ignore.indexOf(message.type) == -1) {
-			spa.readyToSend = "waiting on ready command";
-			spa.waitingResponseTries = 0;
-//console.log("response confirmation received")
-		}
+		displayMessages(message.type,message.content);
 
 		// Translate message
-		if (message.type == "10 bf 06" && spa.outbox.length > 0) { // "Ready for command" (I think??) and messages ready to be sent
-//console.log(spa.readyToSend, spa.waitingResponseTries)
+		if (! spa.registration.registered) { // If not yet registered, cannot send anything yet -- obtain own channel first
+			if (message.type == spa.registration.clearToSend) {
+				// Finally board is broadcasting clear to send on new registered channel
+				spa.registration.registered = true; // (step 5 - tell spa.js that we are registered)
+				console.log("Registered on channel", spa.registration.channel);
 
-// spa.waitingResponseTries is used both to wait for ready command a few times AND for the response confirmation
-			if ((spa.readyToSend == "waiting on ready command" && spa.waitingResponseTries == 0) || spa.waitingResponseTries == 30) { // Ready command received or no confirmation received, so giving up
-//console.log("executing message function")
-				spa.outbox[0](); // Execute first message function in the queue (and probably the only one)
-				spa.outbox.shift(); // Remove message function from queue
-				spa.readyToSend = "waiting on response";
-				spa.waitingResponseTries = 0;
-
-// I think the console.log() is significantly slowing down the timing and causing some message not to be sent at the right time...
-			} else if (spa.readyToSend == "waiting on ready command") { // Wait for a few  "Ready command" before sending next message
-				spa.waitingResponseTries++;
-
-			} else if (spa.readyToSend == "waiting on response") {
-				spa.waitingResponseTries += 1;
-
-			} else { // control variables have not been initialized yet
-				spa.readyToSend = "waiting on ready command"
-				spa.waitingResponseTries = 0;
 			}
+				else if (spa.registration.channel != 0) { // Spam acknowledgement until it clears
+				spa.registration.acknowledge(); // (step 4 - send channel acknowledgement; for some reason, I have to keep spamming it as the board responds unregularly)
+				console.log("Sending channel acknowledge");
+				spa.registration.tries++;
 
-		} else if ((message.type in incoming && ignore.indexOf(message.type) == -1) || message.type == "ff af 13")  { // I have a definition for this message type and it is not in the ignore list or it's the regular status update
+				if (spa.registration.tries > 100) {
+					throw "Unable to register with main board."
+				}
+
+			} else if (message.type == "fe bf 02") {
+				// ff bf 02 is main board channel assignment response	 (step 3 - board response with channel)				
+				spa.registration.channel = message.content[0];
+				if (parseInt(spa.registration.channel,16) > 47) { // 47 (2f in HEX) is the maximum channel number; however, the board happily tries to hand out higher ones, but it never queries them!
+					spa.registration.channel = "2f"; // Hijack the last channel -- if the board is handing these out, you've been having way too much fun!
+				}
+
+				spa.registration.clearToSend = spa.registration.channel + " bf 06";
+				spa.registration.nothingToSend = prepareMessage(spa.registration.channel + " bf 07");
+				spa.registration.acknowledge = prepareMessage(spa.registration.channel + " bf 03");				
+				
+				// Rename object keys in "incoming" object that holds all codes with the proper channel number (stored as "xx" in file)
+				for (let key in incoming) {
+					let newKey = key.replace("xx",spa.registration.channel);
+					if (newKey != key) { // ff af 13 doesn't get changed (no "xx" in it)
+						incoming[newKey] = incoming[key];
+						delete incoming[key];
+					}
+				}
+
+			} else if (message.type == "fe bf 00") {
+				// ff bf 00 is main board request for new clients (step 1 - board request)
+				prepareMessage("fe bf 01 02 76 57")(); // (step 2 - new channel request)
+				console.log("Sending new channel request");
+			}
+	
+		} else if (message.type == spa.registration.clearToSend) { // "Ready for command" from board				
+				if (spa.outbox.length > 0) { // Messages ready to be sent ?					
+					spa.outbox[0](true); // Execute first message function in the queue (and probably the only one)
+					spa.outbox.shift(); // Remove message function from queue
+				} else {
+					spa.registration.nothingToSend();
+				}
+
+		} else if (message.type in incoming || message.type == "ff af 13")  { // I have a definition for this message type and it is not in the ignore list or it's the regular status update
 
 			let codeLine = incoming[message.type].codeLine; // Order of codes
 			let codes = incoming[message.type].codes; // Translation of codes
@@ -315,7 +324,7 @@ function readData(data,testing) {
 
 						if (spa[codeLine[i]] != message.content[i]) { // Only update if not the same value
 							spa[codeLine[i]] = message.content[i]; // Update items in memory
-							io.emit('data',{[codeLine[i]] : spa[codeLine[i]]}); // Send to all connected clients (note: 
+							io.emit('data',{[codeLine[i]] : spa[codeLine[i]]}); // Send to all connected clients
 
 							// Text phone if set temp was reached
 							if (codeLine[i] == "CT") { // CT = current temperature
@@ -360,6 +369,66 @@ function test() {
 		readData(Buffer.from(data,'hex'),1)
 	},8000)
 }
+
+
+function displayMessages(type,content) {
+	let noColor = true; // Set to false for yellow highlighting, but then it shows escape characters in file
+	let raw = true; // Set to true for pure hexadecimal (no showing previous settings for messages)
+	let output = "";
+	if (spa.testing[type] == undefined) {
+		spa.testing[type] = []
+	}
+
+	// Don't want to see status update because only time changed
+	let check1 = spa.testing[type].join(" ");
+	let check2 = content.join(" ");
+	if (type == "ff af 13"  ) {
+		// Cut out the hours and minutes
+		check1 = check1.slice(0,9) + check1.slice(15);
+		check2 = check2.slice(0,9) + check2.slice(15);
+	}
+
+	// Codes to ignore while debugging
+	let ignore = [
+		"ff af 13",
+		"fe bf 00"
+	];
+
+	if ((! type.match(/bf 0[67]/) || type == spa.registration.clearToSend) && ignore.indexOf(type) == -1) { // Ignore CTS from other channels and anything in ignore list
+		if (! raw) {
+			if (check1 != check2) {  // Let's see what's changed with the last update
+				let output = [];
+
+				for (let i=0; i<content.length;i++) {
+
+					if (spa.testing[type][i] != content[i] && ! noColor) {
+						output.push("\033[93m" + content[i] + "\033[37m") // splash of yellow color
+					} else {
+						output.push(content[i])
+					}
+				}
+
+				if (incoming[type] != undefined) {
+					console.log("type: ",type," (",incoming[type].description,")")
+				} else {
+					console.log("type: ",type)
+				}
+
+				if (spa.testing[type].length > 0 || output.length > 0) {
+					console.log("old: ",spa.testing[type].join(" "));
+					console.log("new: ",output.join(" "));
+				}
+				if (incoming[type] != undefined && incoming[type].codeLine != undefined) {
+					console.log("code:",incoming[type].codeLine.join(" "))
+				}
+
+				spa.testing[type] = [...content]; // clone array
+			}
+		} else {
+			console.log(type,content.join(" "));
+		}
+	}
+}
 ///////////////////////
 
 
@@ -375,26 +444,24 @@ function textPhone(messageType,ipAddress,messageContent) {
 			"message"   : messageTemplate[messageType]
 		})
 	}
-}
 
-
-// Determines whether to recommend to take a hat or not
-function takeaHat() {
-	if (spa.weather.current.temperature <= 0 && spa.weather.current.wind >= 10) {
-		return "\nTake a hat!"
+	// Determines whether to recommend to take a hat or not
+	function takeaHat() {
+		if (spa.weather.current.temperature <= 0 && spa.weather.current.wind >= 10) {
+			return "\nTake a hat!"
+		}
+		return "" // Return nothing if conditions not met
 	}
-	return "" // Return nothing if conditions not met
 }
 
 
 function sendCommand(requested,param,callBackError,ipAddress) {
-	//console.log(requested)
   // Some messages need config requests to be sent first
   let type;
   let content = "";
 
 	if (requested == "toggleItem") { // verified
-  	type = "10 bf 11";
+  	type = "bf 11";
 
 		let allowed = {"pump1" : "04", "pump2" : "05", "lights" : "11", "heatMode" : "51", "tempRange" : "50", "hold" : "3c"};
 		if (param in allowed) {
@@ -404,7 +471,7 @@ function sendCommand(requested,param,callBackError,ipAddress) {
 		}
 
 	} else if (requested == "setTemp") { // verified
-  	type = "10 bf 20";
+  	type = "bf 20";
 		//range is 80-104 for F, 26-40 for C in high range
 		//range is 50-80 for F, 10-26 for C in low range
 		if ((param >= 50 && param <= 80 && ["00","08","28","18"].includes(spa.HF)) || (param >= 80 && param <= 104 && ["04","0c","2c","1c"].includes(spa.HF))) { // Using HF to figure out which range temperature is sett (high/low)
@@ -415,7 +482,7 @@ function sendCommand(requested,param,callBackError,ipAddress) {
 		}
 
 	} else if (requested == "setTime") {  // Expects param to be in [HH,MM] format // verified
-  	type = "10 bf 21";
+  	type = "bf 21";
 
 		if (param[0] >=0 && param[0] <=23 && param[1] >=0 && param[1] <= 59) { // Check hours and minutes within proper range
 			content = decHex(param[0]) + decHex(param[1]);
@@ -424,27 +491,27 @@ function sendCommand(requested,param,callBackError,ipAddress) {
 		}
 
 	} else if (requested == "filterConfigRequest") { // verified
-  	type = "10 bf 22";
+  	type = "bf 22";
 		content = "01 00 00";
 
 	} else if (requested == "controlConfigRequest1") { // verified
-  	type = "10 bf 22";
+  	type = "bf 22";
 		content = "02 00 00";
 
 	} else if (requested == "controlConfigRequest2") { // verified -- unknown what response means
-  	type = "10 bf 22";
+  	type = "bf 22";
 		content = "04 00 00";
 
 	} else if (requested == "controlConfigRequest3") {  // verified
-  	type = "10 bf 22";
+  	type = "bf 22";
 		content = "08 00 00";
 
 	} else if (requested == "controlConfigRequest4") { // verified  -- unknown what response means
-  	type = "10 bf 22";
+  	type = "bf 22";
 		content = "00 00 01";
 
 	} else if (requested == "getFaults") {
-  	type = "10 bf 22";
+  	type = "bf 22";
 		content = "20 ff 00";
 
   	if (param != undefined) {
@@ -452,15 +519,15 @@ function sendCommand(requested,param,callBackError,ipAddress) {
   	}
 
 	} else if (requested == "getGfciTest") {  // verified
-  	type = "10 bf 22";
+  	type = "bf 22";
 		content = "80 00 00";
 
 	} else if (requested == "setFilterTime") {  // verified
-  	//type = "10 bf 23";
+  	//type = "bf 23";
 		//content = "80 00 00";
 
 	} else if (requested == "setReminders") { // verified
-  	type = "10 bf 27";
+  	type = "bf 27";
 		if (param == 0 || param == 1) { // 0 : on, 1 : off
 			content = "00" + decHex(param);
 		} else {
@@ -468,7 +535,7 @@ function sendCommand(requested,param,callBackError,ipAddress) {
 		}
 
 	} else if (requested == "setTempScale") { // verified
-  	type = "10 bf 27";
+  	type = "bf 27";
 
 		if (param == 0 || param == 1) { // 0 : Fahrenheit, 1 : Celsius
 			content = "01" + decHex(param);
@@ -477,7 +544,7 @@ function sendCommand(requested,param,callBackError,ipAddress) {
 		}
 
 	} else if (requested == "setTimeFormat") { // verified
-  	type = "10 bf 27";
+  	type = "bf 27";
 
 		if (param == 0 || param == 1) {
 			content = "02" + decHex(param);
@@ -486,7 +553,7 @@ function sendCommand(requested,param,callBackError,ipAddress) {
 		}
 
 	} else if (requested == "setCleanCycle") { // verified
-  	type = "10 bf 27";
+  	type = "bf 27";
 
 		if (param >= 0 && param <= 8) { // Each integer represents 30 min increments
 			content = "03" + decHex(param);
@@ -495,7 +562,7 @@ function sendCommand(requested,param,callBackError,ipAddress) {
 		}
 
 	} else if (requested == "setM8") {  // verified
-  	type = "10 bf 27";
+  	type = "bf 27";
 		if (param == 0 || param == 1) {
 			content = "06" + decHex(param);
 		} else {
@@ -503,62 +570,15 @@ function sendCommand(requested,param,callBackError,ipAddress) {
 		}
 
 	} else if (requested == "setABTemp") {  // verified
-  	type = "10 bf e0";
+  	type = "bf e0";
 		content = "03";
 
 	} else if (requested == "test") {  // only for testing (sending commands directly from web page)
 		type = param;
 	}
 
-	prepareMessage(type + content);
-}
-
-
-function displayMessages(type,content) {
-	let output = "";
-	if (spa.testing[type] == undefined) {
-		spa.testing[type] = []
-	}
-
-	// Don't want to see status update because only time changed
-	let check1 = spa.testing[type].join(" ");
-	let check2 = content.join(" ");
-	if (type == "ff af 13"  ) {
-		// Cut out the hours and minutes
-		check1 = check1.slice(0,9) + check1.slice(15);
-		check2 = check2.slice(0,9) + check2.slice(15);
-	}
-
-	//let ignore = [];
-
-	if (check1 != check2 || ignore.indexOf(type) == -1) {  // Let's see what's changed with the last update
-		let output = [];
-
-		for (let i=0; i<content.length;i++) {
-
-			if (spa.testing[type][i] != content[i]) {
-				output.push("\033[93m" + content[i] + "\033[37m") // splash of yellow color
-			} else {
-				output.push(content[i])
-			}
-		}
-
-		if (incoming[type] != undefined) {
-			console.log("type: ",type," (",incoming[type].description,")")
-		} else {
-			console.log("type: ",type)
-		}
-
-		if (spa.testing[type].length > 0 || output.length > 0) {
-			console.log("old: ",spa.testing[type].join(" "));
-			console.log("new: ",output.join(" "));
-		}
-		if (incoming[type] != undefined && incoming[type].codeLine != undefined) {
-			console.log("code:",incoming[type].codeLine.join(" "))
-		}
-
-		spa.testing[type] = [...content]; // clone array
-	}
+	// Add to message ready to send queue (the message is a whole function)
+	spa.outbox.push(prepareMessage(spa.registration.channel + type + content, requested));
 }
 
 
@@ -568,8 +588,8 @@ function decHex(number) {
 }
 
 
-// Get message ready for sending and add it to outbox queue
-function prepareMessage(data) {
+// Get message ready for sending and returns a function for sending message
+function prepareMessage(data, debugMessage) {
 	// Remove all spaces
 	data = data.replace(/ /g, '');
 
@@ -584,33 +604,33 @@ function prepareMessage(data) {
 	// Append message start and end bytes
 	data = "7e" + data + "7e";
 
+	let hexString = data; // If I need to see the hexadecimal message
+
 	// Change HEX string to ASCII characters
 	let asciiString="";
 	for (let i=0; i<data.length/2; i++) {
 		asciiString = asciiString + String.fromCharCode(parseInt(data.substr(i*2,2),16))
 	}
 
-	// Add to message ready to send queue (the message is a whole function)
-	spa.outbox.push(getTransmissionFunc(asciiString,data));
-}
+	// Return a function that needs to be executed when sending message
+	return ( function(asciiString, hexString, debugMessage) {
+		return function(debug) {
+			RE_DE.write(1, function() { // Switch RS485 module to transmit
+				port.write(asciiString, 'ascii', function(err) {
+				  if (err) {
+				    return console.log('Error on write: ', err.message)
+				  }
 
+					if (debug) {
+						console.log(`Sending: ${hexString.match(/../g).join(" ")} (${debugMessage})`);
+					}
 
-// Returns a function that needs to be executed when sending message
-function getTransmissionFunc(asciiString,hexString) {
-	return 	function() {
-		RE_DE.write(1, function() { // Switch RS485 module to transmit
-			port.write(asciiString, 'ascii', function(err) {
-			  if (err) {
-			    return console.log('Error on write: ', err.message)
-			  }
-
-				//console.log("Sending: " + hexString);
-
-			  // Switch RS485 module back to receive
-			  RE_DE.write(0);
+				  // Switch RS485 module back to receive
+				  RE_DE.write(0);
+				})				
 			})
-		})
-	}
+		}
+	})(asciiString, hexString, debugMessage);
 }
 
 
@@ -652,13 +672,11 @@ console.log("Running on " + new Date());
 
 // Get some data for various settings (I still don't know what some of the responses mean...)
 setTimeout(function() {
-	for (let i=0; i<=1; i++) { // Do this twice in case it doesn't go through first time for some reason
-		sendCommand("filterConfigRequest","",checkError);
-		sendCommand("controlConfigRequest1","",checkError);
-		sendCommand("controlConfigRequest2","",checkError);
-		sendCommand("controlConfigRequest3","",checkError);
-		sendCommand("controlConfigRequest4","",checkError);
-	}
+	sendCommand("filterConfigRequest","",checkError);
+	sendCommand("controlConfigRequest1","",checkError);
+	sendCommand("controlConfigRequest2","",checkError);
+	sendCommand("controlConfigRequest3","",checkError);
+	sendCommand("controlConfigRequest4","",checkError);
 },2000);
 
 

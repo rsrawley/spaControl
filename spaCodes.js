@@ -26,7 +26,7 @@ module.exports.incoming = {
 		}
 	},
 
-	"10 bf 23" : { // Filter configuration
+	"xx bf 23" : { // Filter configuration
 		"description" : "Filter configuration",
 		"codeLine" : "1H 1M 1D 1E 2H 2M 2D 2E".split(" "),
 		"codes" : {
@@ -41,7 +41,7 @@ module.exports.incoming = {
 		}
 	},
 
-	"10 bf 24" : { // Control configuration 1 ***seems same as ff af 26***!!!!!!!
+	"xx bf 24" : { // Control configuration 1 ***seems same as ff af 26***!!!!!!!
 		"description" : "Control configuration 1",
 						 	 // 64 c9 2c 00 4d 42 50 35 30 31 55 58 03 a8 2f 63 83 01 06 05 00
 		"codeLine" : "00 00 00 00 B1 B2 B3 B4 B5 B6 B7 B8 00 00 00 00 00 00 00 00 00".split(" "),
@@ -50,7 +50,7 @@ module.exports.incoming = {
 		}
 	},
 
-	"10 bf 25" : { // Control configuration 2
+	"xx bf 25" : { // Control configuration 2
 		"description" : "Control configuration 2",
 						 	 // 09 03 32 63 50 68 49 03 41 02
 		"codeLine" : "00 00 00 00 00 00 00 00 00 00".split(" "),
@@ -58,7 +58,7 @@ module.exports.incoming = {
 		}
 	},
 
-	"10 bf 26" : { // Control configuration 3
+	"xx bf 26" : { // Control configuration 3
 		"description" : "Control configuration 3",
 						 	 // 00 87 00 01 00 01 00 00 01 00 00 00 00 00 00 00 00 00
 		"codeLine" : "00 00 RM TS TF CC 00 00 M8 00 00 00 00 00 00 00 00 00".split(" "),
@@ -71,12 +71,12 @@ module.exports.incoming = {
 		}
 	},
 
-	"10 bf 2e" : { // Control configuration 4
+	"xx bf 2e" : { // Control configuration 4
 		"description" : "Control configuration 4",
 						 	 // 05 00 01 90 00 00
 	},
 
-	"10 bf 28" : { // Faults log
+	"xx bf 28" : { // Faults log
 		"description" : "Faults log",
 						 	 // 0c 0a 10 55 17 21 10 64 60 66
 		"codeLine" : "TO EN EC ND FH FM FE FS FA FB".split(" "),
@@ -94,7 +94,7 @@ module.exports.incoming = {
 		}
 	},
 
-	"10 bf 2b" : { // GFCI test result
+	"xx bf 2b" : { // GFCI test result
 		"description" : "GFCI test result",
 						 	 // 01
 		"codeLine" : "GF".split(" "),
