@@ -110,3 +110,11 @@ function setTempDropMenu() {
 	 document.getElementById("setTemp").options[0].text = "---";
 	 document.getElementById("setTemp").options[0].style.color = "orange";
 }
+
+
+// Add a keyup event listener for the debug level input box
+document.getElementById("newDebugLevel").onkeyup = function (event) {
+	if (event.key == "Enter") {
+		sendValue("debugLevel", document.getElementById("newDebugLevel").value);
+	}
+}

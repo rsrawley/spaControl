@@ -78,12 +78,12 @@ function checkConnectivity(numFails) {
 // Set up GPIO access
 let gpio = require('onoff').Gpio;
 let Vcc = new gpio(18,'high'); // Physical pin 12
-let RE_DE = new gpio(23,'low'); // Physical pin 16
+let CTS = new gpio(23,'low'); // Physical pin 16 (CTS : Clear To Send pin)
 
 // Release all GPIOs on exit
 process.on('SIGINT', function () {
 	Vcc.unexport();
-	RE_DE.unexport();
+	CTS.unexport();
 	process.exit()
 })
 
@@ -174,8 +174,14 @@ io.on('connection', function(socket){
 
   // Messages received
   socket.on('command', function(command) {
-  	//console.log('SOCKET.IO - Received message: ' + JSON.stringify(command));
-		sendCommand(command.type,command.param,checkError,ipAddress);
+  	debug('SOCKET.IO - Received message: ' + JSON.stringify(command), 3);
+
+  	if (command.type == "debugLevel") {
+  		spa.debug.level = command.param;
+  		socket.emit('data',{debug: spa.debug});
+  	} else {
+			sendCommand(command.type,command.param,checkError,ipAddress);
+		}
   })
 
   // Set up notificaton by text
@@ -217,11 +223,16 @@ let spa = {
 	outbox : [], // Messages waiting to be sent to spa
 	notify : {}, // Ip addresses for text notification
 	rates : {}, // Cooling and heating rates
+	debug : { // Only for debugging
+		level: 4 // 0 : no debug messages whatsoever on console to 4 : all debug messages (debug level is chosen in program at each output)
+	},
 	registration : {
 		registered : false, // Will keep trying to register before sending anything
 		channel : 0, // Channel to listen on
 		clearToSend : "", // Clear to send message from board (format : *channel* bf 06)
-		tries: 0
+		tries: 0,
+		preferredChannel: "11", // Will try to register on this channel (or use it if already registered)
+		preferredAlreadyActive : false
 	}
 };
 
@@ -262,16 +273,28 @@ function readData(data,testing) {
 		displayMessages(message.type,message.content);
 
 		// Translate message
-		if (! spa.registration.registered) { // If not yet registered, cannot send anything yet -- obtain own channel first
+		if (! spa.registration.preferredAlreadyActive) { // Prefer a certain channel first before trying to register on a new one
+			if (message.type == spa.registration.preferredChannel + " bf 06") { // CTS for our preferred channel, which means it's already registered so re-use it
+				spa.registration.preferredAlreadyActive = true;
+				spa.registration.registered = true; // Next step (new channel registration) will be skipped that way
+				registerChannel(spa.registration.preferredChannel);
+				debug("Registering on preferred channel " + spa.registration.preferredChannel, 1);
+			}
+
+			spa.registration.tries++;
+			if (spa.registration.tries == 50) { // Check this many message before giving up on prefered channel -- will then try to register a new one
+				spa.registration.preferredAlreadyActive = true;
+				spa.registration.tries = 0; // Reset for next step : new channel request
+			}
+		} else if (! spa.registration.registered) { // If not yet registered, cannot send anything yet -- obtain own channel first
 			if (message.type == spa.registration.clearToSend) {
 				// Finally board is broadcasting clear to send on new registered channel
 				spa.registration.registered = true; // (step 5 - tell spa.js that we are registered)
-				console.log("Registered on channel", spa.registration.channel);
+				debug("Registered on channel " + spa.registration.channel, 1);
 
-			}
-				else if (spa.registration.channel != 0) { // Spam acknowledgement until it clears
+			}	else if (spa.registration.channel != 0 && message.type == "fe bf 00") { // Spam acknowledgement until it clears
 				spa.registration.acknowledge(); // (step 4 - send channel acknowledgement; for some reason, I have to keep spamming it as the board responds unregularly)
-				console.log("Sending channel acknowledge");
+				debug("Sending channel acknowledge", 1);
 				spa.registration.tries++;
 
 				if (spa.registration.tries > 100) {
@@ -280,33 +303,17 @@ function readData(data,testing) {
 
 			} else if (message.type == "fe bf 02") {
 				// ff bf 02 is main board channel assignment response	 (step 3 - board response with channel)				
-				spa.registration.channel = message.content[0];
-				if (parseInt(spa.registration.channel,16) > 47) { // 47 (2f in HEX) is the maximum channel number; however, the board happily tries to hand out higher ones, but it never queries them!
-					spa.registration.channel = "2f"; // Hijack the last channel -- if the board is handing these out, you've been having way too much fun!
-				}
-
-				spa.registration.clearToSend = spa.registration.channel + " bf 06";
-				spa.registration.nothingToSend = prepareMessage(spa.registration.channel + " bf 07");
-				spa.registration.acknowledge = prepareMessage(spa.registration.channel + " bf 03");				
-				
-				// Rename object keys in "incoming" object that holds all codes with the proper channel number (stored as "xx" in file)
-				for (let key in incoming) {
-					let newKey = key.replace("xx",spa.registration.channel);
-					if (newKey != key) { // ff af 13 doesn't get changed (no "xx" in it)
-						incoming[newKey] = incoming[key];
-						delete incoming[key];
-					}
-				}
+				registerChannel(message.content[0]);
 
 			} else if (message.type == "fe bf 00") {
 				// ff bf 00 is main board request for new clients (step 1 - board request)
 				prepareMessage("fe bf 01 02 76 57")(); // (step 2 - new channel request)
-				console.log("Sending new channel request");
+				debug("Sending new channel request", 1);
 			}
 	
 		} else if (message.type == spa.registration.clearToSend) { // "Ready for command" from board				
-				if (spa.outbox.length > 0) { // Messages ready to be sent ?					
-					spa.outbox[0](true); // Execute first message function in the queue (and probably the only one)
+				if (spa.outbox.length > 0) { // Messages ready to be sent ?
+					spa.outbox[0](); // Execute first message function in the queue (and probably the only one)
 					spa.outbox.shift(); // Remove message function from queue
 				} else {
 					spa.registration.nothingToSend();
@@ -348,6 +355,25 @@ function readData(data,testing) {
 			}
 		}
 	}
+
+	function registerChannel(channel) {
+		if (parseInt(channel,16) > 47) { // 47 (2f in HEX) is the maximum channel number; however, the board happily tries to hand out higher ones, but it never queries them!
+			channel = "2f"; // Hijack the last channel -- if the board is handing these out, you've been having way too much fun!
+		}
+		spa.registration.channel = channel;
+		spa.registration.clearToSend = channel + " bf 06";
+		spa.registration.nothingToSend = prepareMessage(channel + " bf 07");
+		spa.registration.acknowledge = prepareMessage(channel + " bf 03");				
+		
+		// Rename object keys in "incoming" object that holds all codes with the proper channel number (stored as "xx" in file)
+		for (let key in incoming) {
+			let newKey = key.replace("xx",channel);
+			if (newKey != key) { // ff af 13 doesn't get changed (no "xx" in it)
+				incoming[newKey] = incoming[key];
+				delete incoming[key];
+			}
+		}
+	}
 }
 
 ////////////////////For forcing messages for testing only !!!
@@ -372,7 +398,7 @@ function test() {
 
 
 function displayMessages(type,content) {
-	let noColor = true; // Set to false for yellow highlighting, but then it shows escape characters in file
+	let noColor = false; // Set to false for yellow highlighting, but then it shows escape characters in file
 	let raw = true; // Set to true for pure hexadecimal (no showing previous settings for messages)
 	let output = "";
 	if (spa.testing[type] == undefined) {
@@ -382,6 +408,7 @@ function displayMessages(type,content) {
 	// Don't want to see status update because only time changed
 	let check1 = spa.testing[type].join(" ");
 	let check2 = content.join(" ");
+
 	if (type == "ff af 13"  ) {
 		// Cut out the hours and minutes
 		check1 = check1.slice(0,9) + check1.slice(15);
@@ -389,12 +416,12 @@ function displayMessages(type,content) {
 	}
 
 	// Codes to ignore while debugging
-	let ignore = [
-		"ff af 13",
-		"fe bf 00"
-	];
+	let ignore = [];
+	if (spa.debug.level < 3) { ignore.push("ff af 13","fe bf 00") };
+	if (spa.debug.level < 2) { ignore.push("") };
+	if (spa.debug.level < 1) { ignore.push("") };
 
-	if ((! type.match(/bf 0[67]/) || type == spa.registration.clearToSend) && ignore.indexOf(type) == -1) { // Ignore CTS from other channels and anything in ignore list
+	if (spa.debug.level == 4 || (ignore.indexOf(type) == -1) && ! type.match(/bf 0[67]/)) { // Ignore CTS from other channels and anything in ignore list
 		if (! raw) {
 			if (check1 != check2) {  // Let's see what's changed with the last update
 				let output = [];
@@ -427,6 +454,12 @@ function displayMessages(type,content) {
 		} else {
 			console.log(type,content.join(" "));
 		}
+	}
+}
+
+function debug(message, level) {
+	if (level <= spa.debug.level) {
+		console.log(message);
 	}
 }
 ///////////////////////
@@ -614,19 +647,21 @@ function prepareMessage(data, debugMessage) {
 
 	// Return a function that needs to be executed when sending message
 	return ( function(asciiString, hexString, debugMessage) {
-		return function(debug) {
-			RE_DE.write(1, function() { // Switch RS485 module to transmit
+		if (debugMessage == undefined) {
+			debugMessage = "";
+		}
+
+		return function() {
+			CTS.write(1, function() { // Switch RS485 module to transmit
 				port.write(asciiString, 'ascii', function(err) {
 				  if (err) {
 				    return console.log('Error on write: ', err.message)
 				  }
 
-					if (debug) {
-						console.log(`Sending: ${hexString.match(/../g).join(" ")} (${debugMessage})`);
-					}
+					debug(`Sending: ${hexString.match(/../g).join(" ")} (${debugMessage})`, 3);					
 
 				  // Switch RS485 module back to receive
-				  RE_DE.write(0);
+				  setTimeout(function(){ CTS.write(0) }, 5); // Apparently shutting off CTS too quickly breaks transmission
 				})				
 			})
 		}
@@ -684,9 +719,9 @@ setTimeout(function() {
 setTimeout(function() {
 	if (spa.TC == "00") { // Only send command if not activated (it's a toggle command)
 		sendCommand("setABTemp","",checkError);
-		console.log("A/B temperature sensor activated");
+		debug("A/B temperature sensor activated", 1);
 	} else {
-		console.log("A/B temperature sensor already active")
+		debug("A/B temperature sensor already active", 1)
 	}
 },3000)
 
@@ -700,7 +735,7 @@ fs.readFile('graphData','utf8', function(err,data) {
 	if (err) {
 		console.log("Error reading graph data from file OR file does not exist.")
 	} else {
-		console.log("Graph data was read from file.");
+		debug("Graph data was read from file.", 1);
 		graphData = JSON.parse(data);
 	}
 });

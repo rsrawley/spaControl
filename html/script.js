@@ -60,7 +60,7 @@ socket.on('error',function(error) {
 let spa = {}; // Keep temperatures in memory
 
 // Receive data websockets
-socket.on('data',function(spaData) {	
+socket.on('data',function(spaData) {
 	for (let key in spaData) {
 		let data = {
 			"id" : key,
@@ -139,6 +139,11 @@ socket.on('data',function(spaData) {
 			} else {
 				document.getElementById("estimatedTime").style.backgroundColor = "red"
 			}
+		}
+
+		// Debug level
+		if (data.id == "debug") {
+			document.getElementById("debugLevel").innerHTML = data.value.level
 		}
 	}
 })
