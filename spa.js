@@ -224,7 +224,8 @@ let spa = {
 	notify : {}, // Ip addresses for text notification
 	rates : {}, // Cooling and heating rates
 	debug : { // Only for debugging
-		level: 4 // 0 : no debug messages whatsoever on console to 4 : all debug messages (debug level is chosen in program at each output)
+		level: 0, // 0 : no debug messages whatsoever on console to 4 : all debug messages (debug level is chosen in program at each output)
+		deactivate: () => {setTimeout(() => {spa.debug.level = 0}, 60000)} // Set debug level to zero after a minute in case I forget and leave it logging
 	},
 	registration : {
 		registered : false, // Will keep trying to register before sending anything
@@ -234,8 +235,8 @@ let spa = {
 		preferredChannel: "11", // Will try to register on this channel (or use it if already registered)
 		preferredAlreadyActive : false
 	}
-};
-
+}
+spa.debug.deactivate(); // One minute timer
 spa.testing=[]; // Only used for testing (displaying changes in configs)
 
 // Set up message translation matrix (codes must be unique as they are used to store data in spa{})
@@ -605,13 +606,17 @@ function sendCommand(requested,param,callBackError,ipAddress) {
 	} else if (requested == "setABTemp") {  // verified
   	type = "bf e0";
 		content = "03";
+	}
 
-	} else if (requested == "test") {  // only for testing (sending commands directly from web page)
+	if (requested == "test") {  // only for testing (sending commands directly from web page)
 		type = param;
+		prepareMessage(type + content, requested)()
+	} else {
+		type = spa.registration.channel + type;
 	}
 
 	// Add to message ready to send queue (the message is a whole function)
-	spa.outbox.push(prepareMessage(spa.registration.channel + type + content, requested));
+	spa.outbox.push(prepareMessage(type + content, requested));
 }
 
 
@@ -706,13 +711,14 @@ function checksum(hexstring) {
 console.log("Running on " + new Date());
 
 // Get some data for various settings (I still don't know what some of the responses mean...)
-setTimeout(function() {
+setTimeout( () => { 
 	sendCommand("filterConfigRequest","",checkError);
 	sendCommand("controlConfigRequest1","",checkError);
 	sendCommand("controlConfigRequest2","",checkError);
 	sendCommand("controlConfigRequest3","",checkError);
 	sendCommand("controlConfigRequest4","",checkError);
-},2000);
+	//sendCommand("test","10 BF 04",checkError);
+}, 2000);
 
 
 // Active A/B temperature readings

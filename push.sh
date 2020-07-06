@@ -7,9 +7,9 @@ push_updates () {
         git push origin master # master branch
 }
 
-cd libraries
-push_updates # submodule update
+#cd libraries
+#push_updates # submodule update
 
-cd ..
+#cd ..
 push_updates # main repo update
 
