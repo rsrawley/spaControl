@@ -18,6 +18,6 @@ As per https://github.com/serialport/node-serialport/issues/1583, you must disab
 Add "dtoverlay=pi3-disable-bt" in /boot/config.txt
 
 # crontab
-@reboot /home/pi/spaControl/startHotTub.sh
+@reboot /home/pi/spaControl/start_hotTub.sh
 
 Uses port 9000

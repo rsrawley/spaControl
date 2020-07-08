@@ -225,7 +225,10 @@ let spa = {
 	rates : {}, // Cooling and heating rates
 	debug : { // Only for debugging
 		level: 0, // 0 : no debug messages whatsoever on console to 4 : all debug messages (debug level is chosen in program at each output)
-		deactivate: () => {setTimeout(() => {spa.debug.level = 0}, 60000)} // Set debug level to zero after a minute in case I forget and leave it logging
+		deactivate: () => {setTimeout(() => {spa.debug.level = 0}, 10*60000)}, // Set debug level to zero after a certain time in case I forget and leave it logging
+		allMessages: false,
+		initialCommand: "", // Send this command when program first starts
+		statusUpdatesRecord: true
 	},
 	registration : {
 		registered : false, // Will keep trying to register before sending anything
@@ -236,7 +239,7 @@ let spa = {
 		preferredAlreadyActive : false
 	}
 }
-spa.debug.deactivate(); // One minute timer
+spa.debug.deactivate(); // After timer goes off
 spa.testing=[]; // Only used for testing (displaying changes in configs)
 
 // Set up message translation matrix (codes must be unique as they are used to store data in spa{})
@@ -377,6 +380,7 @@ function readData(data,testing) {
 	}
 }
 
+
 ////////////////////For forcing messages for testing only !!!
 //test(); // one line to comment out
 function test() {
@@ -452,7 +456,7 @@ function displayMessages(type,content) {
 
 				spa.testing[type] = [...content]; // clone array
 			}
-		} else {
+		} else if ((spa.debug.level > 0 && ! type.match(/bf 0[67]/) && type != "ff af 13") || spa.debug.allMessages || (spa.debug.statusUpdatesRecord && type == "ff af 13" && ! type.match(/bf 0[67]/))) {		
 			console.log(type,content.join(" "));
 		}
 	}
@@ -610,13 +614,13 @@ function sendCommand(requested,param,callBackError,ipAddress) {
 
 	if (requested == "test") {  // only for testing (sending commands directly from web page)
 		type = param;
-		prepareMessage(type + content, requested)()
+		prepareMessage(type, requested)();
 	} else {
 		type = spa.registration.channel + type;
-	}
 
-	// Add to message ready to send queue (the message is a whole function)
-	spa.outbox.push(prepareMessage(type + content, requested));
+		// Add to message ready to send queue (the message is a whole function)
+		spa.outbox.push(prepareMessage(type + content, requested));
+	}
 }
 
 
@@ -663,10 +667,10 @@ function prepareMessage(data, debugMessage) {
 				    return console.log('Error on write: ', err.message)
 				  }
 
-					debug(`Sending: ${hexString.match(/../g).join(" ")} (${debugMessage})`, 3);					
+					debug(`Sending: ${hexString.match(/../g).slice(2,-2).join(" ")} (${debugMessage})`, 3);					
 
 				  // Switch RS485 module back to receive
-				  setTimeout(function(){ CTS.write(0) }, 5); // Apparently shutting off CTS too quickly breaks transmission
+ 				 setTimeout(function(){ CTS.write(0) }, 1); // Apparently shutting off CTS too quickly breaks transmission
 				})				
 			})
 		}
@@ -712,13 +716,19 @@ console.log("Running on " + new Date());
 
 // Get some data for various settings (I still don't know what some of the responses mean...)
 setTimeout( () => { 
-	sendCommand("filterConfigRequest","",checkError);
+/*	sendCommand("filterConfigRequest","",checkError);
 	sendCommand("controlConfigRequest1","",checkError);
 	sendCommand("controlConfigRequest2","",checkError);
 	sendCommand("controlConfigRequest3","",checkError);
 	sendCommand("controlConfigRequest4","",checkError);
-	//sendCommand("test","10 BF 04",checkError);
-}, 2000);
+*/
+	if (spa.debug.initialCommand != "") {
+		sendCommand("test",spa.debug.initialCommand,checkError);
+	}
+}, 1000);
+
+let counter=0;
+//setInterval(function(){sendCommand("test","11 bf "+decHex(counter));counter++;},500);
 
 
 // Active A/B temperature readings

@@ -3,8 +3,14 @@
 module.exports.incoming = {
 	"ff af 13" : { // Status update
 		"description" : "Status udpate",
+	
+	//no ozone      17 03 67 0c 06 00 28 00 00 04 0c 00 00 02 00 00 00 00 02 06 64 00 00 00 1e 00 00
+ //						    00 03 67 0c 07 00 28 00 00 04 0c 00 00 02 00 00 00 00 02 02 62 00 00 00 1e 00 00
+//after wipe      17 03 67 0c 0e 00 28 00 00 04 0c 00 00 02 00 00 00 00 02 06 62 00 00 00 1e 00 00
+//ff af 13        14 00 67 11 0e 00 00 67 67 04 0c 00 00 02 00 00 00 00 00 04 62 01 00 00 1e 00 00
+
 						    //17 00 62 15 0a 00 00 00 00 08 0c 00 00 02 00 00 00 00 00 04 60 00 00 00 1e 00 00
-		"codeLine" : "GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CC ST TC 00 00 H2 00 00".split(" "),
+		"codeLine" : "GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00".split(" "),
 		"codes" : {
 			"GF" : "General flag (05 = on hold)", // set to 17 without A/B temperature sensor activated, set to 14 otherwise???
 			"PF" : "Priming flag (on start, goes through different stages: 04,42,05,01,00 ---0x01 = Priming)",
