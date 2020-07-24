@@ -1,0 +1,150 @@
+Running on Sun Jul 12 2020 12:13:07 GMT-0400 (Eastern Daylight Time)
+Graph data was read from file.
+type:  ff af 2b
+old:  
+new:  [93m01[37m
+type:  ff af 12
+old:  
+new:  [93m04[37m [93m00[37m [93m04[37m [93m05[37m [93m11[37m [93m1b[37m [93m3d[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m04[37m [93m05[37m [93m00[37m [93m11[37m
+type:  ff af 14
+old:  
+new:  [93m04[37m [93m04[37m [93m05[37m [93m00[37m [93m11[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m
+type:  ff af 12
+old:  04 00 04 05 11 1b 3d 00 00 00 00 00 00 04 05 00 11
+new:  [93m01[37m [93m04[37m [93m05[37m [93m1b[37m [93m01[37m [93m91[37m [93m02[37m 00 00 00 00 00 00 [93m00[37m [93m00[37m 00 [93m00[37m
+type:  ff af 14
+old:  04 04 05 00 11 00 00 00 00 00 00 00 00 00 00 00 00
+new:  [93m01[37m 04 05 [93m11[37m [93m28[37m 00 00 00 00 00 00 00 00 00 00 00 00
+Sending new channel request
+type:  fe bf 01
+old:  
+new:  [93m02[37m [93m76[37m [93m57[37m
+Sending: fe bf 01 02 76 57 ()
+type:  fe bf 02
+old:  
+new:  [93m10[37m [93m76[37m [93m57[37m
+Registered on channel 10
+type:  ff af 13  ( Status udpate )
+old:  
+new:  [93m01[37m [93m04[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m64[37m [93m4d[37m [93m00[37m [93m02[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m06[37m [93m61[37m [93m00[37m [93m00[37m [93m00[37m [93m1e[37m [93m00[37m [93m00[37m
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+type:  10 bf 24  ( Control configuration 1 )
+old:  
+new:  [93m64[37m [93mc9[37m [93m2c[37m [93m00[37m [93m4d[37m [93m42[37m [93m50[37m [93m35[37m [93m30[37m [93m31[37m [93m55[37m [93m58[37m [93m03[37m [93ma8[37m [93m2f[37m [93m63[37m [93m83[37m [93m01[37m [93m06[37m [93m05[37m [93m00[37m
+code: 00 00 00 00 B1 B2 B3 B4 B5 B6 B7 B8 00 00 00 00 00 00 00 00 00
+type:  10 bf 25  ( Control configuration 2 )
+old:  
+new:  [93m09[37m [93m03[37m [93m32[37m [93m63[37m [93m50[37m [93m68[37m [93m49[37m [93m03[37m [93m41[37m [93m02[37m
+code: 00 00 00 00 00 00 00 00 00 00
+type:  10 bf 2e  ( Control configuration 4 )
+old:  
+new:  [93m05[37m [93m00[37m [93m01[37m [93m90[37m [93m00[37m [93m68[37m
+type:  ff af 13  ( Status udpate )
+old:  01 04 00 00 00 00 00 64 4d 00 02 00 00 00 00 00 00 00 00 06 61 00 00 00 1e 00 00
+new:  01 [93m00[37m 00 00 00 00 00 64 4d 00 02 00 00 00 00 00 00 00 00 06 61 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+type:  ff af 13  ( Status udpate )
+old:  01 00 00 00 00 00 00 64 4d 00 02 00 00 00 00 00 00 00 00 06 61 00 00 00 1e 00 00
+new:  01 [93m04[37m 00 00 00 00 00 [93mc9[37m [93m5f[37m 00 02 00 00 00 00 00 00 00 00 06 61 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+type:  ff af 13  ( Status udpate )
+old:  01 04 00 00 00 00 00 c9 5f 00 02 00 00 00 00 00 00 00 00 06 61 00 00 00 1e 00 00
+new:  01 [93m00[37m 00 00 00 00 00 c9 5f 00 02 00 00 00 00 00 00 00 00 06 61 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+type:  ff af 13  ( Status udpate )
+old:  01 00 00 00 00 00 00 c9 5f 00 02 00 00 00 00 00 00 00 00 06 61 00 00 00 1e 00 00
+new:  01 [93m42[37m 00 00 00 00 00 [93m2c[37m [93m00[37m 00 02 00 00 00 00 00 00 00 00 06 61 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+type:  ff af 13  ( Status udpate )
+old:  01 42 00 00 00 00 00 2c 00 00 02 00 00 00 00 00 00 00 00 06 61 00 00 00 1e 00 00
+new:  01 [93m05[37m 00 00 00 00 00 [93m01[37m 00 00 02 00 00 00 00 00 00 00 00 06 61 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+type:  ff af 13  ( Status udpate )
+old:  01 05 00 00 00 00 00 01 00 00 02 00 00 00 00 00 00 00 00 06 61 00 00 00 1e 00 00
+new:  [93m17[37m [93m01[37m [93mff[37m [93m0c[37m 00 00 [93m13[37m 01 00 00 [93m06[37m 00 00 00 00 00 00 00 00 06 61 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+type:  ff af 13  ( Status udpate )
+old:  17 01 ff 0c 00 00 13 01 00 00 06 00 00 00 00 00 00 00 00 06 61 00 00 00 1e 00 00
+new:  17 [93m03[37m ff 0c 00 00 [93m28[37m 01 00 [93m04[37m [93m0c[37m [93m02[37m 00 [93m02[37m 00 00 00 00 [93m02[37m 06 61 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+type:  10 bf 26  ( Control configuration 3 )
+old:  
+new:  [93m00[37m [93m87[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m01[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m [93m00[37m
+code: 00 00 RM TS TF CC 00 00 M8 00 00 00 00 00 00 00 00 00
+Sending: 10 bf 21 0c 0e (setTime)
+type:  ff af 13  ( Status udpate )
+old:  17 03 ff 0c 00 00 28 01 00 04 0c 02 00 02 00 00 00 00 02 06 61 00 00 00 1e 00 00
+new:  17 03 [93m65[37m 0c [93m01[37m 00 28 [93m00[37m 00 04 0c [93m00[37m 00 02 00 00 00 00 02 06 61 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+type:  ff af 13  ( Status udpate )
+old:  17 03 65 0c 01 00 28 00 00 04 0c 00 00 02 00 00 00 00 02 06 61 00 00 00 1e 00 00
+new:  17 03 65 0c 01 00 28 00 00 04 0c [93m08[37m 00 02 00 00 00 00 02 06 61 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+type:  ff af 13  ( Status udpate )
+old:  17 03 65 0c 01 00 28 00 00 04 0c 08 00 02 00 00 00 00 02 06 61 00 00 00 1e 00 00
+new:  17 03 65 0c 01 00 28 00 00 04 0c 08 00 02 00 00 00 00 02 06 [93m60[37m 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+Sending: 10 bf 21 0c 0f (setTime)
+type:  ff af 13  ( Status udpate )
+old:  17 03 65 0c 01 00 28 00 00 04 0c 08 00 02 00 00 00 00 02 06 60 00 00 00 1e 00 00
+new:  17 [93m00[37m 65 0c [93m0f[37m 00 [93m00[37m 00 00 04 0c 08 00 02 00 00 00 00 [93m00[37m [93m04[37m 60 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+type:  10 bf 22
+old:  
+new:  [93m08[37m [93m00[37m [93m00[37m
+type:  ff af 13  ( Status udpate )
+old:  17 00 65 0c 0f 00 00 00 00 04 0c 08 00 02 00 00 00 00 00 04 60 00 00 00 1e 00 00
+new:  17 00 65 0c 0f 00 00 00 00 04 0c [93m00[37m 00 02 00 00 00 00 00 04 60 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+SOCKET.IO - Received message: {"type":"toggleItem","param":"pump1"}
+Sending: 10 bf 11 04 00 (toggleItem)
+type:  ff af 13  ( Status udpate )
+old:  17 00 65 0c 0f 00 00 00 00 04 0c 00 00 02 00 00 00 00 00 04 60 00 00 00 1e 00 00
+new:  17 00 65 0c [93m15[37m 00 00 00 00 04 0c [93m02[37m 00 02 00 00 00 00 00 04 60 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+SOCKET.IO - Received message: {"type":"toggleItem","param":"pump2"}
+Sending: 10 bf 11 05 00 (toggleItem)
+SOCKET.IO - Received message: {"type":"toggleItem","param":"pump2"}
+Sending: 10 bf 11 05 00 (toggleItem)
+SOCKET.IO - Received message: {"type":"toggleItem","param":"pump2"}
+Sending: 10 bf 11 05 00 (toggleItem)
+SOCKET.IO - Received message: {"type":"toggleItem","param":"lights"}
+Sending: 10 bf 11 11 00 (toggleItem)
+SOCKET.IO - Received message: {"type":"toggleItem","param":"lights"}
+Sending: 10 bf 11 11 00 (toggleItem)
+SOCKET.IO - Received message: {"type":"toggleItem","param":"pump1"}
+Sending: 10 bf 11 04 00 (toggleItem)
+SOCKET.IO - Received message: {"type":"toggleItem","param":"lights"}
+Sending: 10 bf 11 11 00 (toggleItem)
+SOCKET.IO - Received message: {"type":"toggleItem","param":"lights"}
+Sending: 10 bf 11 11 00 (toggleItem)
+type:  ff af 13  ( Status udpate )
+old:  17 00 65 0c 15 00 00 00 00 04 0c 02 00 02 00 00 00 00 00 04 60 00 00 00 1e 00 00
+new:  17 00 65 0c [93m16[37m 00 00 00 00 04 0c 02 00 02 [93m03[37m 00 00 00 00 04 60 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+SOCKET.IO - Received message: {"type":"toggleItem","param":"lights"}
+Sending: 10 bf 11 11 00 (toggleItem)
+type:  ff af 13  ( Status udpate )
+old:  17 00 65 0c 16 00 00 00 00 04 0c 02 00 02 03 00 00 00 00 04 60 00 00 00 1e 00 00
+new:  17 00 65 0c 16 00 00 00 00 04 0c 02 00 02 [93m00[37m 00 00 00 00 04 60 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+SOCKET.IO - Received message: {"type":"toggleItem","param":"pump2"}
+Sending: 10 bf 11 05 00 (toggleItem)
+SOCKET.IO - Received message: {"type":"toggleItem","param":"pump1"}
+Sending: 10 bf 11 04 00 (toggleItem)
+SOCKET.IO - Received message: {"type":"toggleItem","param":"lights"}
+Sending: 10 bf 11 11 00 (toggleItem)
+SOCKET.IO - Received message: {"type":"toggleItem","param":"lights"}
+Sending: 10 bf 11 11 00 (toggleItem)
+type:  ff af 13  ( Status udpate )
+old:  17 00 65 0c 16 00 00 00 00 04 0c 02 00 02 00 00 00 00 00 04 60 00 00 00 1e 00 00
+new:  17 00 65 0c 16 00 00 00 00 04 0c 02 00 02 [93m03[37m 00 00 00 00 04 60 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+SOCKET.IO - Received message: {"type":"toggleItem","param":"lights"}
+Sending: 10 bf 11 11 00 (toggleItem)
+type:  ff af 13  ( Status udpate )
+old:  17 00 65 0c 16 00 00 00 00 04 0c 02 00 02 03 00 00 00 00 04 60 00 00 00 1e 00 00
+new:  17 00 65 0c 16 00 00 00 00 04 0c 02 00 02 [93m00[37m 00 00 00 00 04 60 00 00 00 1e 00 00
+code: GF PF CT HH MM HM 00 TA TB FC HF PP 00 CP LF 00 00 00 00 CF ST TC 00 00 H2 00 00
+SOCKET.IO - Received message: {"type":"toggleItem","param":"pump2"}
+Sending: 10 bf 11 05 00 (toggleItem)

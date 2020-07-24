@@ -228,7 +228,10 @@ let spa = {
 		deactivate: () => {setTimeout(() => {spa.debug.level = 0}, 10*60000)}, // Set debug level to zero after a certain time in case I forget and leave it logging
 		allMessages: false,
 		initialCommand: "", // Send this command when program first starts
-		statusUpdatesRecord: true
+		statusUpdatesRecord: true,
+		bf06and07Messages: false, // Display bf 06 and bf 07 messages
+		noColor: false, // Set to false for yellow highlighting, but then it shows escape characters in file
+		raw: false // Set to true for pure hexadecimal (no showing previous settings for messages)
 	},
 	registration : {
 		registered : false, // Will keep trying to register before sending anything
@@ -403,8 +406,8 @@ function test() {
 
 
 function displayMessages(type,content) {
-	let noColor = false; // Set to false for yellow highlighting, but then it shows escape characters in file
-	let raw = true; // Set to true for pure hexadecimal (no showing previous settings for messages)
+	let noColor = spa.debug.noColor;
+	let raw = spa.debug.raw;true;
 	let output = "";
 	if (spa.testing[type] == undefined) {
 		spa.testing[type] = []
@@ -425,8 +428,13 @@ function displayMessages(type,content) {
 	if (spa.debug.level < 3) { ignore.push("ff af 13","fe bf 00") };
 	if (spa.debug.level < 2) { ignore.push("") };
 	if (spa.debug.level < 1) { ignore.push("") };
-
-	if (spa.debug.level == 4 || (ignore.indexOf(type) == -1) && ! type.match(/bf 0[67]/)) { // Ignore CTS from other channels and anything in ignore list
+/*
+	if (! spa.debug.bf06and07Messages && ! type.match(/bf 0[67]/)) {
+		console.log(spa.debug.bf06and07Messages,type.match(/bf 0[67]/)==true)
+		return // Ignore bf 06 and 07 messages
+	}
+*/
+	if (spa.debug.level == 4 || (spa.debug.level > 0 && (ignore.indexOf(type) == -1) && ! type.match(/bf 0[67]/))) { // Ignore CTS from other channels and anything in ignore list
 		if (! raw) {
 			if (check1 != check2) {  // Let's see what's changed with the last update
 				let output = [];
@@ -667,7 +675,9 @@ function prepareMessage(data, debugMessage) {
 				    return console.log('Error on write: ', err.message)
 				  }
 
-					debug(`Sending: ${hexString.match(/../g).slice(2,-2).join(" ")} (${debugMessage})`, 3);					
+				  if (spa.debug.bf06and07Messages || ! /bf0[67]/.test(hexString)) { // Don't display ack messages unless debugging
+						debug(`Sending: ${hexString.match(/../g).slice(2,-2).join(" ")} (${debugMessage})`, 3);					
+					}
 
 				  // Switch RS485 module back to receive
  				 setTimeout(function(){ CTS.write(0) }, 1); // Apparently shutting off CTS too quickly breaks transmission
@@ -716,12 +726,12 @@ console.log("Running on " + new Date());
 
 // Get some data for various settings (I still don't know what some of the responses mean...)
 setTimeout( () => { 
-/*	sendCommand("filterConfigRequest","",checkError);
+	sendCommand("filterConfigRequest","",checkError);
 	sendCommand("controlConfigRequest1","",checkError);
 	sendCommand("controlConfigRequest2","",checkError);
 	sendCommand("controlConfigRequest3","",checkError);
 	sendCommand("controlConfigRequest4","",checkError);
-*/
+
 	if (spa.debug.initialCommand != "") {
 		sendCommand("test",spa.debug.initialCommand,checkError);
 	}
@@ -732,6 +742,7 @@ let counter=0;
 
 
 // Active A/B temperature readings
+/*
 setTimeout(function() {
 	if (spa.TC == "00") { // Only send command if not activated (it's a toggle command)
 		sendCommand("setABTemp","",checkError);
@@ -740,7 +751,7 @@ setTimeout(function() {
 		debug("A/B temperature sensor already active", 1)
 	}
 },3000)
-
+*/
 
 // *************** Graph set up ***************
 
@@ -757,28 +768,30 @@ fs.readFile('graphData','utf8', function(err,data) {
 });
 
 // Read temperatures every 5 minutes for graph
-setInterval(function() {
-	// Sometimes on boot, the weather service is not ready to give out weather when spa.js is started, so the weather is undefined
-	if (spa.weather == undefined) {
-		return // Abort function -- no weather data
-	}
+setTimeout(function(){
+	setInterval(function() {
+		// Sometimes on boot, the weather service is not ready to give out weather when spa.js is started, so the weather is undefined
+		if (spa.weather == undefined) {
+			return // Abort function -- no weather data
+		}
 
-	// Data format ['Time','Spa','Exterior','Heating']
-	let heatStatus = 0;
-	if (["2c","1c","28","18"].includes(spa.HF)) {
-		heatStatus = 1
-	}
+		// Data format ['Time','Spa','Exterior','Heating']
+		let heatStatus = 0;
+		if (["2c","1c","28","18"].includes(spa.HF)) {
+			heatStatus = 1
+		}
 
-	// Time to nearest minute[0], spa temperature[1], outside temperature[2], heat status[3]
-	graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(spa.CT,16),parseInt(spa.weather.current.temperature,10),heatStatus]);
+		// Time to nearest minute[0], spa temperature[1], outside temperature[2], heat status[3]
+		graphData.push([Math.round(new Date().getTime()/1000/60)*60,parseInt(spa.CT,16),parseInt(spa.weather.current.temperature,10),heatStatus]);
 
-	// Keep only last 24 hours data (12 data points per hour and 24 h) -- 5 minutes resolution
-	if (graphData.length >= 288) {
-		graphData.shift()
-	}
+		// Keep only last 24 hours data (12 data points per hour and 24 h) -- 5 minutes resolution
+		if (graphData.length >= 288) {
+			graphData.shift()
+		}
 
-	io.emit('graphData',graphData);
-},5*60000);
+		io.emit('graphData',graphData);
+	},5*60000);
+}, 5 * 60000 - Date.now() % (5 * 60000)); // Start recording graph data at the nearest 5 min interval
 
 
 function getRates() {
