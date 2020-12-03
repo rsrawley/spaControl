@@ -94,6 +94,10 @@ button {
 	padding: 30px;
 }
 
+#survey {
+	background-color: yellow;
+}
+
 #HF {
 	color: red;
 	font-size: 40px;

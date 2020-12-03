@@ -49,6 +49,34 @@ function alldone() {
 	sendValue("setTemp","96");
 }
 
+let surveyInfo = {};
+function survey(update323) {
+return
+	if (update323 != undefined) {
+		console.log("1")
+	console.log(update323)
+		console.log("2")
+		udpate323=""
+		console.log(udpate323)
+		for (let key in udpate) {
+					console.log(udpate)
+
+			surveyInfo.key = update[key];
+					console.log(surveyInfo)
+
+		}
+		console.log(surveyInfo)
+	} else {
+		let url = "https://docs.google.com/forms/d/e/1FAIpQLSfG0qC00XZSNj7RiPk88MQcMpT1024X6AaVg-tay2uT666Zcw/viewform?usp=pp_url&entry.2035630848=OUTDOORTEMP&entry.559070904=WIND&entry.910765068=GUSTS&entry.633035073=TUBTEMP";
+		
+		for (let key in surveyInfo) {
+			url = url.replace(key,surveyInfo[key]);
+		}
+
+		window.open(url, '_blank');
+	}
+}
+
 
 // socket.io functions
 let socket = io();
@@ -121,6 +149,7 @@ socket.on('data',function(spaData) {
 			}
 			if (spa.CT != undefined && spa.ST != undefined && spa.HF != undefined) { // Make sure there are values (especially on first load)
 				spaGauge(spa);
+				survey({TUBTEMP:Number(spa.CT)}); // Update link prefill info
 			}
 		}
 
@@ -300,6 +329,9 @@ socket.on('weather',function(weatherData) {
 
 		// Hourly forecast
 		google.charts.setOnLoadCallback(function(){drawWeatherChart(weatherData.hourly)})
+
+		// Update survey link prefill info
+		survey({OUTDOOR:Number(weatherData.current.temperature),WIND:Number(weatherData.current.wind),GUSTS:Number(weatherData.current.windGust)});
 	}
 })
 
