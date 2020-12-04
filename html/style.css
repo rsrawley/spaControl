@@ -87,6 +87,9 @@ body {
 
 .programs button{
 	background-color: rgba(175, 175, 0, 0.5);
+	font-size: 40px;
+	padding: 10px;
+	margin: 10px;
 }
 
 button {

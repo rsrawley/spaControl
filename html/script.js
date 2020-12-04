@@ -39,7 +39,7 @@ function letsgo() {
 	if (document.getElementById("lights").style.backgroundColor != "limegreen") { // Lights not on?
 		sendValue("toggleItem","lights");
 	}
-	sendValue("setTemp","100");
+	sendValue("setTemp","98");
 }
 
 function alldone() {
@@ -50,22 +50,12 @@ function alldone() {
 }
 
 let surveyInfo = {};
-function survey(update323) {
-return
-	if (update323 != undefined) {
-		console.log("1")
-	console.log(update323)
-		console.log("2")
-		udpate323=""
-		console.log(udpate323)
-		for (let key in udpate) {
-					console.log(udpate)
-
-			surveyInfo.key = update[key];
-					console.log(surveyInfo)
-
+function survey(update) {
+	if (update != undefined) {
+		for (let key in update) {
+			surveyInfo[key] = update[key];
 		}
-		console.log(surveyInfo)
+
 	} else {
 		let url = "https://docs.google.com/forms/d/e/1FAIpQLSfG0qC00XZSNj7RiPk88MQcMpT1024X6AaVg-tay2uT666Zcw/viewform?usp=pp_url&entry.2035630848=OUTDOORTEMP&entry.559070904=WIND&entry.910765068=GUSTS&entry.633035073=TUBTEMP";
 		
@@ -331,7 +321,7 @@ socket.on('weather',function(weatherData) {
 		google.charts.setOnLoadCallback(function(){drawWeatherChart(weatherData.hourly)})
 
 		// Update survey link prefill info
-		survey({OUTDOOR:Number(weatherData.current.temperature),WIND:Number(weatherData.current.wind),GUSTS:Number(weatherData.current.windGust)});
+		survey({OUTDOORTEMP:Number(weatherData.current.temperature),WIND:Number(weatherData.current.wind),GUSTS:Number(weatherData.current.windGust)});
 	}
 })
 
