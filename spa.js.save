@@ -5,10 +5,6 @@
 |                                               |
 |  Written by Raphaël Srawley                   |
 |                                               |
-|  For use with Node.js ('cos he only bothered  |
-|  to learn JS and finds it handy to have       |
-|  front-end and back-end in one language...)   |
-|                                               |
 +===============================================+
 
 Balboa motherboard Uses RS485 protocol :
@@ -293,7 +289,7 @@ let spa = {
 	notify : {}, // Ip addresses for text notification
 	rates : {}, // Cooling and heating rates
 	debug : { // Only for debugging
-		level: 0, // 0 : no debug messages whatsoever on console to 4 : all debug messages (debug level is chosen in program at each output)
+		level: 4, // 0 : no debug messages whatsoever on console to 4 : all debug messages (debug level is chosen in program at each output)
 		deactivate: () => {setTimeout(() => {spa.debug.level = 0}, 10*60000)}, // Set debug level to zero after a certain time in case I forget and leave it logging
 		allMessages: true,
 		initialCommand: "", // Send this command when program first starts
@@ -302,32 +298,22 @@ let spa = {
 		noColor: false, // Set to false for yellow highlighting, but then it shows escape characters in file
 		raw: true // Set to true for pure hexadecimal (no showing previous settings for messages)
 	},
-	registration: {
-		clear: function () {
-			let parameters = {
-				registration : {
-					registered : false, // Will keep trying to register before sending anything
-					channel : 0, // Channel to listen on
-					clearToSend : "", // Clear to send message from board (format : *channel* bf 06)
-					tries: 0,
-					step: 1, // Which step of registration we are on (simplest way to avoid skipping steps)
-					preferredChannel: "11", // Will try to register on this channel (or use it if already registered)
-					preferredAlreadyActive : false,
-					identifierCode : "ff ff" // This is a unique identifier (completely made up by me) that the board will use to reply (in case many devices registering at once)
-				}
-			}
-			spa = {...spa, ...parameters}; // Merge objects
-		}
+	registration : {
+		registered : false, // Will keep trying to register before sending anything
+		channel : 0, // Channel to listen on
+		clearToSend : "", // Clear to send message from board (format : *channel* bf 06)
+		tries: 0,
+		step: 1, // Which step of registration we are on (simplest way to avoid skipping steps)
+		preferredChannel: "131", // Will try to register on this channel (or use it if already registered)
+		preferredAlreadyActive : false,
+		identifierCode : "ff ff" // This is a unique identifier (completely made up by me) that the board will use to reply (in case many devices registering at once)
 	},
-	weather: undefined, // So that web interface eventually knows no weather info available (function fetchWeather will change this value)
-	phone: (ENABLE.TEXTING != false) && (gmail != undefined && addressBook != undefined), // If everything is ok and texting enabled, this will be true
+	weather : undefined, // So that web interface eventually knows no weather info available (function fetchWeather will change this value)
+	phone : (ENABLE.TEXTING != false) && (gmail != undefined && addressBook != undefined), // If everything is ok and texting enabled, this will be true
 	survey: ENABLE.SURVEY
 }
 spa.debug.deactivate(); // After timer goes off
-spa.testing = []; // Only used for testing (displaying changes in configs)
-
-// Initialize registration variables
-spa.registration.clear();
+spa.testing=[]; // Only used for testing (displaying changes in configs)
 
 // Set up message translation matrix (codes must be unique as they are used to store data in spa{})
 let incoming = require(`${path}/spaCodes.js`).incoming;
@@ -367,12 +353,14 @@ function readData(data,testing) {
 		// Translate message
 		if (message.type == spa.registration.existingClientQuery) { // Motherboard rebooted and is querying existing clients.  Let it know we have an existing channel!
 			// Reset channel registration to force program to register again
-			spa.registration.clear();
-			debug("Spa rebooted.  Attempting to register on a channel...",1);
+			spa.registration.registered = false;
+			spa.registration.channel = 0;
+			debug("Spa rebooted.  Attempting to register on a channel...");
 
 		} else if (! spa.registration.preferredAlreadyActive) { // Prefer a certain channel first before trying to register on a new one
-			// The intention for a "preferred channel" is to avoid ever increasing channel number assignments
+			// To be honest, I think my original intention for a "preferred channel" is to avoid ever increasing channel number assignments
 			// when running spa program multiple times during testing...
+
 			// The assumption here, of course, is that there is no other device that is using this channel!
 
 			if (message.type == spa.registration.preferredChannel + " bf 06") { // CTS for our preferred channel, which means it's already registered so re-use it
@@ -388,28 +376,28 @@ function readData(data,testing) {
 				spa.registration.tries = 0; // Reset for next step : new channel request
 			}
 		} else if (! spa.registration.registered) { // If not yet registered, cannot send anything yet -- obtain own channel first
-			if (message.type == spa.registration.clearToSend && spa.registration.step == 4) {
+			if (message.type == spa.registration.clearToSend) {
 				// Finally board is broadcasting clear to send on new registered channel
 				spa.registration.registered = true; // (step 5 - tell spa.js that we are registered)
 				debug("Registered on channel " + spa.registration.channel, 1);
 
-			}	else if (spa.registration.channel != 0 && message.type == "fe bf 00" && spa.registration.step == 3) { // Spam acknowledgement until it clears
+			} else if (spa.registration.channel != 0 && message.type == "fe bf 00") { // Spam acknowledgement until it clears
 				spa.registration.acknowledge(); // (step 4 - send channel acknowledgement; for some reason, I have to keep spamming it as the board responds unregularly)
-				spa.registration.step = 4;
-				debug("Sending channel acknowledge", 1);
+				
+debug("Sending channel acknowledge", 1);
 				spa.registration.tries++;
 
 				if (spa.registration.tries > 100) {
 					throw "Unable to register with main board."
 				}
 
-			} else if (message.type == "fe bf 02" && spa.registration.step == 2) { // ff bf 02 is main board channel assignment response	 (step 3 - board response with channel)
+			} else if (message.type == "fe bf 02") { // ff bf 02 is main board channel assignment response	 (step 3 - board response with channel)
 				if (message.content[1] + " " + message.content[2] == spa.registration.identifierCode) {
 					registerChannel(message.content[0]);
 					spa.registration.step = 3;
 				} else { // Main board sent response, but it's not for our identifier code
-					spa.registration.clear();
-					debug("Possible conflict in requesting address, trying again.", 1);
+					spa.registration.step = 1; // We are conflicting with another device, restarting process
+					debug("Possible conflict with other device getting address, trying again.", 1);
 				}
 
 			} else if (message.type == "fe bf 00" && spa.registration.step == 1) { // Step 1 - board request for new clients
@@ -780,7 +768,7 @@ function prepareMessage(data, debugMessage) {
 
 				  // Switch RS485 module back to receive
  				 setTimeout(function(){ CTS.write(0) }, 1); // Apparently shutting off CTS too quickly breaks transmission
-				})
+				})				
 			})
 		}
 	})(data, debugMessage);
@@ -828,7 +816,7 @@ for (let key in ENABLE) {
 }
 
 // Get some data for various settings (I still don't know what some of the responses mean...)
-setTimeout( () => {
+setTimeout( () => { 
 	sendCommand("filterConfigRequest","",checkError);
 	sendCommand("controlConfigRequest1","",checkError);
 	sendCommand("controlConfigRequest2","",checkError);

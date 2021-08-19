@@ -87,7 +87,11 @@ socket.on('data',function(spaData) {
 
 //		data.value = data.value.toString().padStart(2,"0"); // Put zeroes in front so it looks like hex (easier for me to spot in  statements)
 
-		if (data.id == "HF") { // Heat flag -- also contains high/low range info
+		if (data.id == "phone" || data.id == "survey") {
+			if (! data.value) { // Hide certains buttons on interface depending on what's enabled in spa.js
+				document.getElementById(data.id).hidden = true;
+			}
+		} else if (data.id == "HF") { // Heat flag -- also contains high/low range info
 			let heat = [{"04" : "On hold", "0c" : "Not heating", "2c" : "Waiting", "1c" : "Heating"}, // High range
 									{"00" : "On hold", "08" : "Not heating", "28" : "Waiting", "18" : "Heating"}]; // Low range
 
@@ -146,7 +150,7 @@ socket.on('data',function(spaData) {
 		if (document.getElementById(data.id)) { // id exists ?
 			if (["CT","HH","MM","ST","TA","TB"].includes(data.id)) {
 				document.getElementById(data.id).innerHTML = parseInt(data.value,16).toString().padStart(2,"0"); // Change hex to decimal
-			} else if (! ["HF"].includes(data.id)) {
+			} else if (! ["HF","survey","phone"].includes(data.id)) {
 				document.getElementById(data.id).innerHTML = data.value;
 			}
 		}
@@ -284,6 +288,10 @@ function spaGauge(data) {
 google.charts.load('current', {'packages':['corechart']})
 socket.on('weather',function(weatherData) {
 	if (weatherData != undefined) {
+		document.getElementById("weatherBox").hidden = false;
+		document.getElementById("graph").hidden = false;
+		document.getElementById("estimatedTime").hidden = false;
+
 		// Current weather picture
 		document.getElementById("icon").src = weatherData.current.icon;
 		document.getElementById("outdoor").innerHTML = weatherData.current.temperature + "°C";
@@ -322,6 +330,10 @@ socket.on('weather',function(weatherData) {
 
 		// Update survey link prefill info
 		survey({OUTDOORTEMP:Number(weatherData.current.temperature),WIND:Number(weatherData.current.wind),GUSTS:Number(weatherData.current.windGust)});
+	} else {
+		document.getElementById("weatherBox").hidden = true;
+		document.getElementById("graph").hidden = true;
+		document.getElementById("estimatedTime").hidden = true;
 	}
 })
 
