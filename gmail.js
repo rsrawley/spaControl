@@ -2,9 +2,6 @@
 // ********************** GMAIL SETUP **********************
 //
 
-// This script uses the npm packages :
-// - nodemailer
-
 // Call this from node with : (note the parentheses)
 // const path = __dirname; // Current directory where main.js was launched
 // const gmail = require(path + '/libraries/gmail.js')();
@@ -30,7 +27,13 @@ module.exports = function (credentialsLocation) {
 	let nodemailer = require('nodemailer');
 	let transporter = nodemailer.createTransport({
 		service :'gmail',
-		auth : {"user": credentials.username, "pass": credentials.password}
+		auth: {
+			type: "OAuth2",
+			user: credentials.username,
+			clientId: credentials.clientId,
+			clientSecret: credentials.clientSecret,
+			refreshToken: credentials.refreshToken
+		}
 	});
 
 	// "email" is an object with keys "recipient", "subject", "message" -- all optional

@@ -1,2 +1,8 @@
-Running on Sun Jul 18 2021 00:46:33 GMT-0400 (Eastern Daylight Time)
-Texting phone number listed under 192.168.1.36
+Running on Sun Jun 26 2022 18:53:52 GMT-0400 (Eastern Daylight Time)
+with the following parameters:
+TEXTING : true
+SURVEY : true
+WEATHER : true
+SAVE_ELECTRICITY : true
+AB_TEMP_SENSOR : false
+REBOOT_LOSS_INTERNET : false
