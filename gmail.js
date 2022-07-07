@@ -28,11 +28,8 @@ module.exports = function (credentialsLocation) {
 	let transporter = nodemailer.createTransport({
 		service :'gmail',
 		auth: {
-			type: "OAuth2",
 			user: credentials.username,
-			clientId: credentials.clientId,
-			clientSecret: credentials.clientSecret,
-			refreshToken: credentials.refreshToken
+			pass: credentials.password
 		}
 	});
 
