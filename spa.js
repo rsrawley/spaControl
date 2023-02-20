@@ -293,7 +293,7 @@ let spa = {
 	notify : {}, // Ip addresses for text notification
 	rates : {}, // Cooling and heating rates
 	debug : { // Only for debugging
-		level: 0, // 0 : no debug messages whatsoever on console to 4 : all debug messages (debug level is chosen in program at each output)
+		level: 4, // 0 : no debug messages whatsoever on console to 4 : all debug messages (debug level is chosen in program at each output)
 		deactivate: () => {setTimeout(() => {spa.debug.level = 0}, 10*60000)}, // Set debug level to zero after a certain time in case I forget and leave it logging
 		allMessages: true,
 		initialCommand: "", // Send this command when program first starts
@@ -305,18 +305,16 @@ let spa = {
 	registration: {
 		clear: function () {
 			let parameters = {
-				registration : {
-					registered : false, // Will keep trying to register before sending anything
-					channel : 0, // Channel to listen on
-					clearToSend : "", // Clear to send message from board (format : *channel* bf 06)
-					tries: 0,
-					step: 1, // Which step of registration we are on (simplest way to avoid skipping steps)
-					preferredChannel: "11", // Will try to register on this channel (or use it if already registered)
-					preferredAlreadyActive : false,
-					identifierCode : "ff ff" // This is a unique identifier (completely made up by me) that the board will use to reply (in case many devices registering at once)
-				}
+				registered : false, // Will keep trying to register before sending anything
+				channel : 0, // Channel to listen on
+				clearToSend : "", // Clear to send message from board (format : *channel* bf 06)
+				tries: 0,
+				step: 1, // Which step of registration we are on (simplest way to avoid skipping steps)
+				preferredChannel: "11", // Will try to register on this channel (or use it if already registered)
+				preferredAlreadyActive : false,
+				identifierCode : "ff ff" // This is a unique identifier (completely made up by me) that the board will use to reply (in case many devices registering at once)
 			}
-			spa = {...spa, ...parameters}; // Merge objects
+			spa.registration = {...spa.registration, ...parameters}; // Merge objects
 		}
 	},
 	weather: undefined, // So that web interface eventually knows no weather info available (function fetchWeather will change this value)
@@ -491,8 +489,10 @@ function readData(data,testing) {
 //test(); // one line to comment out
 function test() {
 	setTimeout(function(){
+	//setInterval(function(){
 		console.log("testing now");
-		let data="ffaf1314005f0e1600006060040c000002000000000004600100001e0000"
+		//let data="ffaf1314005f0e1600006060040c000002000000000004600100001e0000"
+		let data="11bf04"
 	  //                  CT
 
 		// Compute length of final message (+1 for length byte and +1 for checksum byte)
