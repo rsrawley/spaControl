@@ -287,7 +287,7 @@ function spaGauge(data) {
 // Draw weather graph
 google.charts.load('current', {'packages':['corechart']})
 socket.on('weather',function(weatherData) {
-	if (weatherData != undefined) {
+	if (Object.keys(weatherData).length !== 0) { // Check if weather object is {}
 		document.getElementById("weatherBox").hidden = false;
 		document.getElementById("graph").hidden = false;
 		document.getElementById("estimatedTime").hidden = false;
@@ -300,8 +300,8 @@ socket.on('weather',function(weatherData) {
 		temperatureGauge({
 			"temperature" : Number(weatherData.current.temperature),
 			"feelsLike" : Number(weatherData.current.feelsLike),
-			"low" : Number(weatherData.current.low),
-			"high" : Number(weatherData.current.high)
+			"low" : 0,//Number(weatherData.current.low),
+			"high" : 0//Number(weatherData.current.high)
 		});
 
 		// Wind gauge
@@ -572,6 +572,7 @@ function temperatureGauge(data) {
 		}
 	}
 
+/*
 	// Add high and low temps
 	for (let i=0; i<=1; i++) {
 		// Little pointer line
@@ -597,6 +598,7 @@ function temperatureGauge(data) {
 			text.style.fontSize = "0.5em";
 		}
 	}
+*/
 }
 
 

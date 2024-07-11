@@ -56,22 +56,20 @@ const path = __dirname; // Current directory where main.js was launched
 const fs = require('fs');
 
 // Gmail setup (purely for sending "email to text" so that I can receive texts on cell phone when spa is ready)
-const gmail = (function () {
+const gmail = ENABLE.TEXTING && (function () {
 	// See gmail.js file for details on spa.credentials file format
 	let result;
-	if (ENABLE.TEXTING) {
-		try {
-			result = require(`${path}/gmail.js`)(`${path}/../spa.credentials`);
-		} catch(err) {
-			// An error here is not critical -- program will still function
-			console.log("WARNING : Error when setting up gmail script.  Texting will not be available.");
-			//console.log(err); // Uncomment to see detailed error
-		}
+	try {
+		result = require(`${path}/gmail.js`)(`${path}/../spa.credentials`);
+	} catch(err) {
+		// An error here is not critical -- program will still function
+		console.log("WARNING : Error when setting up gmail script.  Texting will not be available.");
+		//console.log(err); // Uncomment to see detailed error
 	}
 	return result; // undefined if error
 })()
 
-const addressBook = (function () {
+const addressBook = ENABLE.TEXTING && (function () {
 	/*
 	- addressBook is a text file that matches IP addresses to emails
 	- when a user asks for text notification in the web interface, the IP address is obtained 
@@ -81,16 +79,13 @@ const addressBook = (function () {
 	"192.168.1.someNumber" : "phoneNumber@someProvider",
 	}
 	*/
-
 	let result;
-	if (ENABLE.TEXTING) {
-		try {
-			result = JSON.parse(fs.readFileSync(`${path}/../spa.addressbook`,'utf8'));
-		} catch(err) {
-			// An error here is not critical -- program will still function
-			console.log("WARNING : Error parsing address book.  Texting will not be available.");
-			//console.log(err); // Uncomment to see detailed error
-		}
+	try {
+		result = JSON.parse(fs.readFileSync(`${path}/../spa.addressbook`,'utf8'));
+	} catch(err) {
+		// An error here is not critical -- program will still function
+		console.log("WARNING : Error parsing address book.  Texting will not be available.");
+		//console.log(err); // Uncomment to see detailed error
 	}
 	return result; // undefined if error
 })()
@@ -127,9 +122,9 @@ function checkConnectivity(numFails) {
 
 
 // Set up GPIO access
-let gpio = require('onoff').Gpio;
-let Vcc = new gpio(18,'high'); // Physical pin 12
-let CTS = new gpio(23,'low'); // Physical pin 16 (CTS : Clear To Send pin)
+const gpio = require('onoff').Gpio;
+const Vcc = new gpio(18,'high'); // Physical pin 12
+const CTS = new gpio(23,'low'); // Physical pin 16 (CTS : Clear To Send pin)
 
 // Release all GPIOs on exit
 process.on('SIGINT', function () {
@@ -146,39 +141,34 @@ process.on('SIGINT', function () {
 
    If people are interested, I could make the weather repo public.
  */
-let request = require("request2.0");
+let request;
 if (ENABLE.WEATHER) {
+	request = require("request2.0");
 	setTimeout(fetchWeather,30000); // Initial call -- wait half a minute for weather service to start on Pi reboot
+//	setTimeout(fetchWeather,0); // delete this line !!!
 	setInterval(fetchWeather, 5 * 60000); // Every 5 minutes after that
 }
 
 function fetchWeather() {
 	request({"url": "http://192.168.1.58:3000", "json": true}, function (error, response, body) {
 		if (!error && response.statusCode === 200 && body != undefined) {
-			let abort = 0;
-			let weather = {};
 			let params = { // Weather parameters I want to pick up
 				current : ["icon","temperature","feelsLike","wind","windDir","windGust","high","low","sunrise","sunset","sunrise_gmt","sunset_gmt","airQualityIndex","airQualityLevel","moonRise","moonSet","moonPhase"],
 				hourly : ["hour","milli","icon","temperature","feelsLike","wind","windDir","windGust","POP","rain","snow"]
 			};
 
 			for (let key in params) {
-				weather[key] = {}; // Avoid undefined
-				for (let i=0; i<params[key].length; i++) {
-					// If anything goes wrong with weather info lookup, do not update weather values
-					if (body[key][params[key][i]] == undefined) {
-						abort = 1;
-						break
-					}
-
-					weather[key][params[key][i]] = body[key][params[key][i]];
+				if (!spa.weather[key]) { // Avoid undefined
+					spa.weather[key] = {};
 				}
+				params[key].forEach(parameter => {
+					if (body[key][parameter] != undefined) {
+						spa.weather[key][parameter] = body[key][parameter];
+					}
+				});
 			}
 
-			if (abort != 1) {
-				spa.weather = weather;
-				io.emit('weather',spa.weather); // Send to all connected clients
-			}
+			io.emit('weather',spa.weather); // Send to all connected clients
 		}
 	})
 }
@@ -223,7 +213,7 @@ app.get('/:action',function(req,res,next) {
 ================== */
 
 // Web socket server
-io = require('socket.io').listen(server);
+const io = require('socket.io').listen(server);
 
 io.on('connection', function(socket){
 	// Keep track of IP address for texting
@@ -237,7 +227,7 @@ io.on('connection', function(socket){
 	socket.emit('weather',spa.weather); // Send to all connected clients
 
 	// Disable texting if texting setup failed
-	if (gmail == undefined || addressBook == undefined) {
+	if (!gmail || !addressBook) {
 		socket.emit('texting','disabled');
 	}
 
@@ -270,22 +260,14 @@ function checkError(error) {
 // Every minute, check the spa time is right and adjust (if spa turned off, or daylight saving change)
 setInterval(function () {setTime()}, 60000);
 function setTime() {
-	if (spa.HH != undefined) { // Make sure we already have a connection
-		// It's easier to use JS date objects to handle checking before and after midnight
-		let currentDate = new Date();
-		let hours = currentDate.getHours();
-		let minutes = currentDate.getMinutes();
-
-		let spaTime = new Date(2019,10,19,parseInt(spa.HH,16),parseInt(spa.MM,16)); // October 19, 2019 is an arbitrary date (I happened to work on this function that day)
-
-		// As long as spa time is within +/- 1 min of actual time, we're not modifying it
-		let lowerLimit = new Date(2019,10,19,hours,minutes - 1);
-		let upperLimit = new Date(2019,10,19,hours,minutes + 1);
-		if (!(spaTime.getTime() >= lowerLimit.getTime() && spaTime.getTime() <= upperLimit.getTime())) { // If not in right time, change it
+	if (spa.HH) { // Make sure we already have a connection
+		// As long as spa time is within +/- 1 min of actual time, we're not modifying it (computing difference between current time and spa time below)
+		if (Math.abs((Date.now() - new Date().setHours(parseInt(spa.HH,16),parseInt(spa.MM,16)))) > 1*60*1000) {
 			sendCommand("setTime",[hours,minutes],checkError);
 		}
 	}
 }
+
 
 // Store all items in memory
 let spa = {
@@ -293,7 +275,7 @@ let spa = {
 	notify : {}, // Ip addresses for text notification
 	rates : {}, // Cooling and heating rates
 	debug : { // Only for debugging
-		level: 4, // 0 : no debug messages whatsoever on console to 4 : all debug messages (debug level is chosen in program at each output)
+		level: 0, // 0 : no debug messages whatsoever on console to 4 : all debug messages (debug level is chosen in program at each output)
 		deactivate: () => {setTimeout(() => {spa.debug.level = 0}, 10*60000)}, // Set debug level to zero after a certain time in case I forget and leave it logging
 		allMessages: true,
 		initialCommand: "", // Send this command when program first starts
@@ -317,11 +299,11 @@ let spa = {
 			spa.registration = {...spa.registration, ...parameters}; // Merge objects
 		}
 	},
-	weather: undefined, // So that web interface eventually knows no weather info available (function fetchWeather will change this value)
-	phone: (ENABLE.TEXTING != false) && (gmail != undefined && addressBook != undefined), // If everything is ok and texting enabled, this will be true
+	weather: {},
+	phone: ENABLE.TEXTING && gmail && addressBook, // If everything is ok and texting enabled, this will be true
 	survey: ENABLE.SURVEY
 }
-spa.debug.deactivate(); // After timer goes off
+spa.debug.deactivate(); // After timer goes off, disable debugging
 spa.testing = []; // Only used for testing (displaying changes in configs)
 
 // Initialize registration variables
@@ -339,20 +321,16 @@ const parser = port.pipe(new Delimiter({delimiter: Buffer.from('7e', 'hex') }));
 parser.on('data', readData);
 
 function readData(data,testing) {
-	data = data.hexSlice(); // Convert to hexadecimal string
+  //console.log(data)
+	data = data.toString('hex'); // Convert to hexadecimal string
 
-	// Extract message length (first byte) and message type (next 3 bytes)
+	// Extract message contents : length (first byte) and message type (next 3 bytes), etc.
 	let message = {
 		"hex" : data.match(/../g).join(" "), // Store complete HEX for debugging
 		"length" : parseInt(data.substr(0,2),16), // First byte is length (number of bytes in message) (2 characters in hex per byte, so number of characters is twice this number)
 		"type" : data.substr(2,6), // Next 6 bytes is type of message
-		"content" : data.substring(8,data.length-2).match(/../g), // Slice to the end (except the checksum) and put into array, split two characters at a time (the hex code)
+		"content" : data.substring(8,data.length-2).match(/../g) || [], // Slice to the end (except the checksum) and put into array, split two characters at a time (the hex code); empty array if no content
 		"checksum" : data.substr(-2,2) // Last byte is checksum
-	}
-
-	// In case no content in message (just contains length, message type and checksum)
-	if (message.content == null) {
-		message.content = [];
 	}
 
 	if (data.length == message.length*2 && checksum(data.substring(0,data.length-2)) == message.checksum) { // Check proper message length and checksum
@@ -362,7 +340,7 @@ function readData(data,testing) {
 		// For testing purposes
 		displayMessages(message.type,message.content);
 
-		// Translate message
+		// Translate message (Attention! Order of if statements matters for registration)
 		if (message.type == spa.registration.existingClientQuery) { // Motherboard rebooted and is querying existing clients.  Let it know we have an existing channel!
 			// Reset channel registration to force program to register again
 			spa.registration.clear();
@@ -442,7 +420,6 @@ function readData(data,testing) {
 							// Text phone if set temp was reached
 							if (codeLine[i] == "CT") { // CT = current temperature
 								for (let ipAddress in spa.notify) {
-
 									if (Date.now() > spa.notify[ipAddress].time + 6 * 3600 * 1000) { // More than 6 hours since asked for text, so delete
 										delete spa.notify[ipAddress]; // Remove the notification for that IP address
 									} else if (spa.notify[ipAddress].ST == spa.CT) {
@@ -629,7 +606,7 @@ function sendCommand(requested,param,callBackError,ipAddress) {
 		//range is 50-80 for F, 10-26 for C in low range
 		if ((param >= 50 && param <= 80 && ["00","08","28","18"].includes(spa.HF)) || (param >= 80 && param <= 104 && ["04","0c","2c","1c"].includes(spa.HF))) { // Using HF to figure out which range temperature is sett (high/low)
 			content = decHex(param);
-			spa.lastChangeToTemp = new Date().getTime(); // Keep track of when temperature was changed (because of saveElectricity() )
+			spa.lastChangeToTemp = Date.now(); // Keep track of when temperature was changed (because of saveElectricity() )
 		} else {
 			return callBackError("Error in " + requested);
 		}
@@ -741,7 +718,7 @@ function sendCommand(requested,param,callBackError,ipAddress) {
 
 // Converts a decimal into a hexadecimal
 function decHex(number) {
-	return parseInt(number,10).toString(16).padStart(2,"0")
+	return parseInt(number,10).toString(16).padStart(2,"0");
 }
 
 
@@ -755,8 +732,7 @@ function prepareMessage(data, debugMessage) {
 	data = length.toString(16).padStart(2,"0") + data;
 
 	// Compute CRC8 checksum
-	let crc = checksum(data);
-	data = data + crc;
+	data = data + checksum(data);
 
 	// Append message start and end bytes
 	data = "7e" + data + "7e";
@@ -840,9 +816,10 @@ setTimeout( () => {
 	}
 }, 1000);
 
+/*
 let counter=0;
-//setInterval(function(){sendCommand("test","11 bf "+decHex(counter));counter++;},500);
-
+setInterval(function(){sendCommand("test","11 bf "+decHex(counter));counter++;},500);
+*/
 
 // Active A/B temperature readings
 if (ENABLE.AB_TEMP_SENSOR) {
@@ -856,6 +833,7 @@ if (ENABLE.AB_TEMP_SENSOR) {
 	},3000)
 }
 
+
 // *************** Graph set up ***************
 
 // Read file to get data (if it exists)
@@ -867,6 +845,7 @@ fs.readFile('graphData','utf8', function(err,data) {
 	} else {
 		debug("Graph data was read from file.", 1);
 		graphData = JSON.parse(data);
+		graphData = graphData.filter(dataPoint => (Date.now() - new Date(dataPoint[0]*1000))<=24*60*60*1000); // Only retain last 24 hours worth of data (only useful if program was not working for quite a while and so not gathering data -- it messes with the graph!)
 	}
 });
 
@@ -874,7 +853,7 @@ fs.readFile('graphData','utf8', function(err,data) {
 setTimeout(function(){
 	setInterval(function() {
 		// Sometimes on boot, the weather service is not ready to give out weather when spa.js is started, so the weather is undefined
-		if (spa.weather == undefined) {
+		if (! spa.weather.current.temperature) {
 			return // Abort function -- no weather data
 		}
 
@@ -897,7 +876,49 @@ setTimeout(function(){
 }, 5 * 60000 - Date.now() % (5 * 60000)); // Start recording graph data at the nearest 5 min interval
 
 
-function getRates() {
+// Save to file every hour
+setInterval(function() {
+	fs.writeFile('graphData', JSON.stringify(graphData), 'utf8', function(err) {
+  	if (err) {
+  		console.log("Error saving graph data.")
+  	} else {
+  		//console.log('Graph data saved.');
+  	}
+	});
+},60*60000);
+
+
+// Check for electricity savings time (7am to 7pm)
+if (ENABLE.SAVE_ELECTRICITY) {
+	setTimer(2,1,true); // Initial call to turn it on at 2am
+	setTimer(19,0,true); // Initial call to turn it off at 7pm
+}
+function setTimer(hour,saveElectricityFlag,firstCall) {
+	let currentTime = new Date().getTime();
+	let runTime = new Date().setHours(hour,0,0,0); // Set it to 7am/7pm same day
+
+	let timeDelay = runTime - currentTime;
+
+	if (timeDelay <= 0) { // 7am/7pm is in the past, so add 24 h
+		timeDelay = timeDelay + 24*60*60*1000;
+	}
+
+	// More than 2 hours since last temperature change to activate lower temp, otherwise do nothing (user set a temp and expects it to stay that way...)
+	if (!firstCall) {
+		if (saveElectricityFlag == 1 && Date.now() - spa.lastChangeToTemp > 2 * 60 * 60 * 1000) {
+			console.log("flag1")
+			sendCommand("setTemp",80,checkError); // Lower temperature to 80 F to save electricity
+		} else if (saveElectricityFlag == 0) {
+			console.log("flag0")
+			sendCommand("setTemp",96,checkError); // Raise temperature back to 96 F to heat it back up during cheap time
+		}
+	}
+  setTimeout(() => setTimer(hour, saveElectricityFlag, false), timeDelay);
+}
+
+
+// Figures out how much time to heat the hot tub
+function estimatedTime() {
 	// Compute delta time and delta temp for heating rate
 	let periods = [[],[]]; // [0,1 : cooling/heating][ [ [time,temperature],[time,temperature] ] , [ [time,temperature],[time,temperature] ] ]
 	let lastHeatingRead;
@@ -931,128 +952,6 @@ function getRates() {
 			spa.rates[["cool","heat"][i]] = polysolve(periods[i][longestInterval[i]],1)[1] * 60; // Only pick out the slope, mutiply by 60 for per minute rate
 		}
 	}
-}
-
-
-// Save to file every hour
-setInterval(function() {
-	fs.writeFile('graphData', JSON.stringify(graphData), 'utf8', function(err) {
-  	if (err) {
-  		console.log("Error saving graph data.")
-  	} else {
-  		//console.log('Graph data saved.');
-  	}
-	});
-},60*60000);
-
-
-// Check for electricity savings time (7am to 7pm)
-if (ENABLE.SAVE_ELECTRICITY) {
-	setTimer(2,1); // Initial call to turn it on at 2am
-	setTimer(19,0); // Initial call to turn it off at 7pm
-}
-function setTimer(hour,saveElectricityFlag) {
-	let currentTime = new Date().getTime();
-	let shutOffTime = new Date().setHours(hour,0,0,0); // Set it to 7am/7pm same day
-
-	let timeDelay = shutOffTime - currentTime;
-
-	if (timeDelay <= 0) { // 7am/7pm is in the past, so add 24 h
-		timeDelay = timeDelay + 24*60*60*1000
-	}
-
-	setTimeout(getTimeoutFunc(hour,saveElectricityFlag),timeDelay);
-}
-
-function getTimeoutFunc(hour,saveElectricityFlag) {
-	return function() {
-		saveElectricity(saveElectricityFlag);
-		setTimer(hour,saveElectricityFlag);
-	}
-}
-
-function saveElectricity(activate) {
-	// More than 2 hours since last temperature change
-	if (new Date().getTime() - spa.lastChangeToTemp > 2 * 60 * 60 * 1000) {
-		if (activate == 1) {
-			sendCommand("setTemp",80,checkError); // Lower temperature to 80 F to save electricity
-		} else {
-			sendCommand("setTemp",96,checkError); // Raise temperature back to 96 F to heat it back up during cheap time
-		}
-	}
-}
-
-
-// Polynomial best fit solver (written by Raphaël Srawley -- yes, he speaks French too!)
-function polysolve(valeurs,degree) {
-  // Référence : https://arachnoid.com/sage/polynomial.html
-  // S'attend à un tableau de tableaux (de données) : [ [x1,y1] , [x2,y2] , ... ]
-	let n = valeurs.length; // Nombre de données
-
-  // Prendre les valeurs de x and la 1e colonne et y dans la 2e
-  let x = [], y = [];
-  for (let i=0; i<n; i++) {
-    x[i] = valeurs[i][0];
-    y[i] = valeurs[i][1];
-  }
-
-  let m = []; // Matrice à résoudre
-  for (let r=0; r<=degree; r++) { // Row (r)
-    m[r] = []
-
-    for (let c=0; c<=degree; c++) { // Column (c)
-      m[r][c] = 0
-
-      for (let i=0; i<n; i++) { // Somme jusqu'à n-1
-        m[r][c] = m[r][c] + Math.pow(x[i],r+c) // x[i]^(r+c)
-      }
-    }
-  }
-
-  // On rajoute la matrice à droite comme une colonne dans la matrice à gauche
-  for (let r=0; r<=degree; r++) { // Row (r)
-    let somme = 0;
-
-    for (let i=0; i<n; i++) { // Somme jusqu'à n-1
-      somme = somme + Math.pow(x[i],r)*y[i]
-    }
-    m[r].push(somme);
-  }
-
-  // Il faut résoudre la matrice avec élimination Gauss-Jordan
-  for (let i=0; i<=degree; i++) {
-    let coeff = m[i][i];
-
-    for (let c=0; c<=degree+1; c++) { // Column (c)
-      m[i][c] = m[i][c] / coeff // Ajuster tous les coefficients pour avoir un 1 dans la colonne qu'on veut résoudre
-    }
-
-    // Ajuster toute la matrice pour avoir des zéros partout dans la colonne, sauf celle qu'on vient d'ajuster ci-haut
-    for (let r=0; r<=degree; r++) {  // Row (r)
-      if (r != i) {
-        let coeff = m[r][i];
-
-        for (let c=0; c<=degree+1; c++) { // Column (c)
-          m[r][c] = m[r][c] - coeff * m[i][c]
-        }
-      }
-    }
-  }
-
-  // Valeur de retour
-  let coefficients = [];
-
-  for (let i=0; i<=degree; i++) {
-    coefficients.push(m[i][degree+1])
-  }
-
-  return coefficients // Array qui contient les coefficients de x^0 à x^n
-}
-
-
-// Figures out how much time to heat the hot tub
-function estimatedTime() {
-	getRates(); // Compute heating and cooling rates
 
 	let deltaT = parseInt(spa.ST,16) - parseInt(spa.CT,16);
 	let rate = 0;
@@ -1073,4 +972,56 @@ function estimatedTime() {
 	}
 
 	io.emit('data',{estimatedTime : spa.estimatedTime}); // Converting date objet to HH:MM
+
+	// Polynomial best fit solver (written by Raphaël Srawley -- yes, he speaks French too!)
+	function polysolve(valeurs,degree) {
+	  // Référence : https://arachnoid.com/sage/polynomial.html
+	  // S'attend à un tableau de tableaux (de données) : [ [x1,y1] , [x2,y2] , ... ]
+
+	  // Prendre les valeurs de x and la 1e colonne et y dans la 2e
+	  let x = valeurs.map(donnee => donnee[0]);
+	  let y = valeurs.map(donnee => donnee[1]);
+
+	  let m = []; // Matrice à résoudre
+	  for (let r=0; r<=degree; r++) { // Row (r)
+	    m[r] = [];
+
+	    for (let c=0; c<=degree; c++) { // Column (c)
+	      m[r][c] = x.reduce((accumulator, currentValue) => accumulator + currentValue**(r+c), 0); // m[r][c] = m[r][c] + Math.pow(x[i],r+c) // x[i]^(r+c)
+	    }
+	  }
+
+	  // On rajoute la matrice à droite comme une colonne dans la matrice à gauche
+	  for (let r=0; r<=degree; r++) { // Row (r)
+	    m[r].push(valeurs.reduce((accumulator, coord) => accumulator + coord[0]**r*coord[1], 0)); // somme = somme + Math.pow(x[i],r)*y[i];
+	  }
+
+	  // Il faut résoudre la matrice avec élimination Gauss-Jordan
+	  for (let i=0; i<=degree; i++) {
+	    let coeff = m[i][i];
+
+	    for (let c=0; c<=degree+1; c++) { // Column (c)
+	      m[i][c] = m[i][c] / coeff; // Ajuster tous les coefficients pour avoir un 1 dans la colonne qu'on veut résoudre
+	    }
+
+	    // Ajuster toute la matrice pour avoir des zéros partout dans la colonne, sauf celle qu'on vient d'ajuster ci-haut
+	    for (let r=0; r<=degree; r++) {  // Row (r)
+	      if (r != i) {
+	        let coeff = m[r][i];
+
+	        for (let c=0; c<=degree+1; c++) { // Column (c)
+	          m[r][c] = m[r][c] - coeff * m[i][c];
+	        }
+	      }
+	    }
+	  }
+
+	  // Valeur de retour
+	  let coefficients = [];
+	  for (let i=0; i<=degree; i++) {
+	    coefficients.push(m[i][degree+1]);
+	  }
+
+	  return coefficients; // Array qui contient les coefficients de x^0 à x^n
+	}
 }
