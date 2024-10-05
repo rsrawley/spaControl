@@ -1,4 +1,15 @@
 /*
+
+
+Fix line 266 setTime()
+
+
+
+
+
+*/
+
+/*
 +===============================================+
 |                                               |
 |  Balboa controller spa interface (in JS)      |
@@ -258,12 +269,17 @@ function checkError(error) {
 
 
 // Every minute, check the spa time is right and adjust (if spa turned off, or daylight saving change)
-setInterval(function () {setTime()}, 60000);
+setInterval(function () {setTime()}, 5000); // 60000
 function setTime() {
 	if (spa.HH) { // Make sure we already have a connection
+		let currentDate = new Date();
+		let hours = currentDate.getHours();
+		let minutes = currentDate.getMinutes();
+		
 		// As long as spa time is within +/- 1 min of actual time, we're not modifying it (computing difference between current time and spa time below)
-		if (Math.abs((Date.now() - new Date().setHours(parseInt(spa.HH,16),parseInt(spa.MM,16)))) > 1*60*1000) {
+		if (true || Math.abs((Date.now() - currentDate.setHours(parseInt(spa.HH,16),parseInt(spa.MM,16)))) > 1*60*1000) {
 			sendCommand("setTime",[hours,minutes],checkError);
+			console.log(hours,minutes)
 		}
 	}
 }
@@ -906,10 +922,8 @@ function setTimer(hour,saveElectricityFlag,firstCall) {
 	// More than 2 hours since last temperature change to activate lower temp, otherwise do nothing (user set a temp and expects it to stay that way...)
 	if (!firstCall) {
 		if (saveElectricityFlag == 1 && Date.now() - spa.lastChangeToTemp > 2 * 60 * 60 * 1000) {
-			console.log("flag1")
 			sendCommand("setTemp",80,checkError); // Lower temperature to 80 F to save electricity
 		} else if (saveElectricityFlag == 0) {
-			console.log("flag0")
 			sendCommand("setTemp",96,checkError); // Raise temperature back to 96 F to heat it back up during cheap time
 		}
 	}

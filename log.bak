@@ -1,4 +1,4 @@
-Running on Mon Jul 08 2024 13:54:22 GMT-0400 (Eastern Daylight Time)
+Running on Fri Aug 30 2024 16:17:16 GMT-0400 (Eastern Daylight Time)
 with the following parameters:
 TEXTING : true
 SURVEY : true
@@ -6,3 +6,276 @@ WEATHER : true
 SAVE_ELECTRICITY : true
 AB_TEMP_SENSOR : false
 REBOOT_LOSS_INTERNET : false
+WARNING: Error reading graph data from file OR file does not exist.
+/home/pi/spaControl/spa.js:868
+		if (! spa.weather.current.temperature) {
+		                          ^
+
+TypeError: Cannot read property 'temperature' of undefined
+    at Timeout._onTimeout (/home/pi/spaControl/spa.js:868:29)
+    at listOnTimeout (internal/timers.js:535:17)
+    at processTimers (internal/timers.js:479:7)
+error: Forever detected script exited with code: 1
+error: Script restart attempt #1
+Running on Fri Aug 30 2024 16:45:53 GMT-0400 (Eastern Daylight Time)
+with the following parameters:
+TEXTING : true
+SURVEY : true
+WEATHER : true
+SAVE_ELECTRICITY : true
+AB_TEMP_SENSOR : false
+REBOOT_LOSS_INTERNET : false
+WARNING: Error reading graph data from file OR file does not exist.
+Error saving graph data.
+Error saving graph data.
+Error in setTemp
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error in setTemp
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error in setTemp
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error in setTemp
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error in setTemp
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error in setTemp
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error in setTemp
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error in setTemp
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error in setTemp
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error in setTemp
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error saving graph data.
+Error in setTemp
